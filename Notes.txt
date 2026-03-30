@@ -1,0 +1,26 @@
+Hackathon Check list : 
+
+
+Listes de risques et et méthodes d’urgences à appliquer : Faire une liste pour les usagers pour un type d’incident particulier.
+
+Exemple : Qu’est ce qui se passe si un transformateur électrique surchauffe ? Explosion (affichage dynamique d’une icône explosion si température dépasse 40°C par ex)
+
+Chercher d’autres types de risque à documenter et à faire.
+
+
+Attentes : Valorisation de jeu de données existants 
+
+		Innovation autour des défis climatiques 
+		
+		Création de solutions utiles aux services et aux usagers
+
+	       Nouvelle lecture du territoire grâce à la data science et à l’IA
+
+		Impliquer les citoyens via des outils de visualisation ou d’éducation
+
+		
+		Idées de feature : En cas de panne réseau; détecter l’alerte SMS pour afficher les méthodes d’urgences adéquates
+
+						Connecter l’application aux alertes départementales
+						
+						
