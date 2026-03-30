@@ -23,4 +23,137 @@ Attentes : Valorisation de jeu de données existants
 
 						Connecter l’application aux alertes départementales
 						
-						
+
+
+🚀 1. Stack technique (le plus efficace pour vous)
+
+👉 Pour un hackathon, oubliez le natif (trop long).
+
+✅ Recommandé :
+Flutter (mobile Android + iOS)
+Backend simple :
+Firebase (notifications + base de données)
+API carto :
+Google Maps ou OpenStreetMap
+
+👉 Pourquoi ?
+
+1 seul code
+Notifications push faciles
+Géolocalisation intégrée
+Rapide à déployer en démo
+🌍 2. Fonctionnalités clés (MVP hackathon)
+📍 1. Géolocalisation utilisateur
+Récupérer la position GPS
+Détecter si l’utilisateur est dans une zone à risque
+
+👉 Exemple :
+
+Zone inondable
+Proximité site SEVESO
+Zone feu de forêt
+🚨 2. Système d’alertes
+Sources possibles :
+Météo-France (vigilance météo)
+Vigicrues (inondations)
+Ministère de la Transition écologique (risques industriels / SEVESO)
+
+👉 Fonctionnement :
+
+Soit via API (si dispo)
+Soit via simulation pour la démo hackathon (plus réaliste en temps court)
+📢 3. Notifications intelligentes
+
+Exemple :
+
+🚨 “Risque d’inondation dans votre zone”
+👉 “Montez en étage, évitez les sous-sols”
+
+📋 4. Checklist dynamique
+
+Très important dans votre idée 👍
+
+✔️ Avant la catastrophe (prévention)
+Eau potable
+Lampe torche
+Radio
+Médicaments
+Documents importants
+⚠️ Pendant la catastrophe (adaptatif)
+
+👉 Exemple inondation :
+
+Couper électricité
+Ne pas prendre la voiture
+Monter en hauteur
+
+👉 Exemple incendie :
+
+Fermer volets
+Arroser abords
+Préparer évacuation
+🧠 5. Logique intelligente (le cœur de votre app)
+
+Vous pouvez faire un système simple :
+
+SI (position = zone inondable) ET (alerte météo pluie forte)
+→ déclencher scénario "inondation"
+
+Puis :
+
+afficher consignes
+afficher checklist spécifique
+🗺️ 3. Données utiles (France / Bordeaux)
+
+Vous pouvez exploiter :
+
+Cartes de zones à risque (open data)
+Plans de prévention des risques (PPR)
+Données publiques de Bordeaux Métropole
+
+👉 Astuce hackathon :
+➡️ Prenez 1 seul type de risque bien fait (ex : inondation) plutôt que tout mal fait
+
+⚡ 4. Plan concret pour le hackathon (très important)
+🕐 Jour 1 matin
+Définir :
+1–2 risques max
+parcours utilisateur simple
+🕐 Jour 1 aprem
+Flutter :
+écran carte
+bouton “ma position”
+Firebase :
+stocker alertes simulées
+🕐 Jour 2
+notifications push
+checklist dynamique
+scénarios (if/else)
+🎯 5. Ce qui va vous faire gagner
+
+👉 Les jurys adorent :
+
+💡 1. Impact réel
+“Peut sauver des vies”
+Adapté au territoire
+💡 2. Simplicité
+UX claire (1 bouton = info vitale)
+💡 3. Démo concrète
+Simulation catastrophe en live
+
+👉 Exemple de démo :
+
+“Je me déplace → je reçois une alerte → j’ai les consignes”
+
+🧩 Bonus : idées qui font la différence
+Mode offline (très important en crise)
+Bouton “je suis en sécurité”
+Partage position à proches
+Mode “kit prêt” (checklist cochée à l’avance)
+🧭 Conclusion
+
+👉 Votre app =
+Waze + Alertes météo + Guide de survie localisé
+
+Et pour un hackathon :
+👉 Flutter + Firebase + simulation intelligente = combo gagnant
