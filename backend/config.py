@@ -1,0 +1,6 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+METEO_FRANCE_API_KEY = os.getenv("eyJ4NXQiOiJZV0kxTTJZNE1qWTNOemsyTkRZeU5XTTRPV014TXpjek1UVmhNbU14T1RSa09ETXlOVEE0Tnc9PSIsImtpZCI6ImdhdGV3YXlfY2VydGlmaWNhdGVfYWxpYXMiLCJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9")
