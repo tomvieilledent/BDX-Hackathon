@@ -1,0 +1,339 @@
+Hackathon Check list : 
+
+
+Listes de risques et et méthodes d’urgences à appliquer : Faire une liste pour les usagers pour un type d’incident particulier.
+
+Exemple : Qu’est ce qui se passe si un transformateur électrique surchauffe ? Explosion (affichage dynamique d’une icône explosion si température dépasse 40°C par ex)
+
+Chercher d’autres types de risque à documenter et à faire.
+
+
+Attentes : Valorisation de jeu de données existants 
+
+		Innovation autour des défis climatiques 
+		
+		Création de solutions utiles aux services et aux usagers
+
+	       Nouvelle lecture du territoire grâce à la data science et à l’IA
+
+		Impliquer les citoyens via des outils de visualisation ou d’éducation
+
+		
+		Idées de feature : En cas de panne réseau; détecter l’alerte SMS pour afficher les méthodes d’urgences adéquates
+
+						Connecter l’application aux alertes départementales
+
+
+----------------------------------------------------------------------------------------						
+
+
+🚀 1. Stack technique (le plus efficace pour vous)
+
+👉 Pour un hackathon, oubliez le natif (trop long).
+
+✅ Recommandé :
+Flutter (mobile Android + iOS)
+Backend simple :
+Firebase (notifications + base de données)
+API carto :
+Google Maps ou OpenStreetMap
+
+👉 Pourquoi ?
+
+1 seul code
+Notifications push faciles
+Géolocalisation intégrée
+Rapide à déployer en démo
+🌍 2. Fonctionnalités clés (MVP hackathon)
+📍 1. Géolocalisation utilisateur
+Récupérer la position GPS
+Détecter si l’utilisateur est dans une zone à risque
+
+👉 Exemple :
+
+Zone inondable
+Proximité site SEVESO
+Zone feu de forêt
+🚨 2. Système d’alertes
+Sources possibles :
+Météo-France (vigilance météo)
+Vigicrues (inondations)
+Ministère de la Transition écologique (risques industriels / SEVESO)
+
+👉 Fonctionnement :
+
+Soit via API (si dispo)
+Soit via simulation pour la démo hackathon (plus réaliste en temps court)
+📢 3. Notifications intelligentes
+
+Exemple :
+
+🚨 “Risque d’inondation dans votre zone”
+👉 “Montez en étage, évitez les sous-sols”
+
+📋 4. Checklist dynamique
+
+Très important dans votre idée 👍
+
+✔️ Avant la catastrophe (prévention)
+Eau potable
+Lampe torche
+Radio
+Médicaments
+Documents importants
+⚠️ Pendant la catastrophe (adaptatif)
+
+👉 Exemple inondation :
+
+Couper électricité
+Ne pas prendre la voiture
+Monter en hauteur
+
+👉 Exemple incendie :
+
+Fermer volets
+Arroser abords
+Préparer évacuation
+🧠 5. Logique intelligente (le cœur de votre app)
+
+Vous pouvez faire un système simple :
+
+SI (position = zone inondable) ET (alerte météo pluie forte)
+→ déclencher scénario "inondation"
+
+Puis :
+
+afficher consignes
+afficher checklist spécifique
+🗺️ 3. Données utiles (France / Bordeaux)
+
+Vous pouvez exploiter :
+
+Cartes de zones à risque (open data)
+Plans de prévention des risques (PPR)
+Données publiques de Bordeaux Métropole
+
+👉 Astuce hackathon :
+➡️ Prenez 1 seul type de risque bien fait (ex : inondation) plutôt que tout mal fait
+
+⚡ 4. Plan concret pour le hackathon (très important)
+🕐 Jour 1 matin
+Définir :
+1–2 risques max
+parcours utilisateur simple
+🕐 Jour 1 aprem
+Flutter :
+écran carte
+bouton “ma position”
+Firebase :
+stocker alertes simulées
+🕐 Jour 2
+notifications push
+checklist dynamique
+scénarios (if/else)
+🎯 5. Ce qui va vous faire gagner
+
+👉 Les jurys adorent :
+
+💡 1. Impact réel
+“Peut sauver des vies”
+Adapté au territoire
+💡 2. Simplicité
+UX claire (1 bouton = info vitale)
+💡 3. Démo concrète
+Simulation catastrophe en live
+
+👉 Exemple de démo :
+
+“Je me déplace → je reçois une alerte → j’ai les consignes”
+
+🧩 Bonus : idées qui font la différence
+Mode offline (très important en crise)
+Bouton “je suis en sécurité”
+Partage position à proches
+Mode “kit prêt” (checklist cochée à l’avance)
+🧭 Conclusion
+
+👉 Votre app =
+Waze + Alertes météo + Guide de survie localisé
+
+Et pour un hackathon :
+👉 Flutter + Firebase + simulation intelligente = combo gagnant
+
+
+----------------------------------------------------------------------------------------	
+			
+
+🧠 🗺️ 1. Schéma global de l’application
+UTILISATEUR
+   ↓
+📱 Application mobile (Flutter)
+   ↓
+📍 Géolocalisation (GPS)
+   ↓
+🧠 Moteur de décision (logique simple)
+   ↓
+📡 Backend (Firebase)
+   ↓
+📊 Données risques (API / simulation)
+   ↓
+🚨 Notification + UI
+   ↓
+📋 Checklist + consignes adaptées
+🔁 Flux en situation réelle
+1. L’utilisateur ouvre l’app
+2. L’app récupère sa position
+3. Vérifie les risques autour
+4. Détecte un danger
+5. Déclenche une alerte
+6. Affiche :
+   - consignes
+   - checklist adaptée
+🧩 2. Architecture technique simplifiée
+📱 Frontend
+Flutter
+écran carte
+écran alerte
+écran checklist
+☁️ Backend
+Firebase
+Firestore → stock alertes
+Cloud Messaging → notifications
+🌍 Données
+API ou mock :
+Météo-France
+Vigicrues
+ou JSON simulé (hackathon 👍)
+⚙️ 3. Logique centrale (le “cerveau”)
+🎯 Principe
+
+Associer :
+
+position
+type de risque
+niveau d’alerte
+🔧 Exemple simple
+SI utilisateur ∈ zone_inondable
+ET pluie = forte
+ALORS
+   risque = "inondation"
+   afficher consignes_inondation
+📦 Structure des données (simple)
+{
+  "type": "inondation",
+  "zone": "Bordeaux Nord",
+  "niveau": "élevé",
+  "consignes": [
+    "Monter en hauteur",
+    "Couper électricité"
+  ],
+  "checklist": [
+    "Eau potable",
+    "Lampe torche",
+    "Radio"
+  ]
+}
+🗺️ 4. Écrans à développer (MVP)
+1. 🏠 Écran principal
+bouton “📍 ma position”
+statut : ✅ / ⚠️ / 🚨
+2. 🚨 Écran alerte
+type de risque
+niveau (couleur)
+message clair
+
+👉 Exemple :
+
+🚨 Inondation imminente
+Montez en étage immédiatement
+
+3. 📋 Checklist
+Mode 1 (préparation)
+liste cochable
+Mode 2 (urgence)
+liste priorisée (actions immédiates)
+4. 🗺️ Carte
+afficher position
+afficher zones à risque
+🧪 5. Simulation (ULTRA IMPORTANT)
+
+👉 Ne perdez pas de temps avec des vraies API compliquées
+
+Faites ça :
+stockez 2–3 alertes dans Firebase
+déclenchez-les manuellement
+
+👉 Exemple :
+
+bouton “Simuler inondation”
+bouton “Simuler incendie”
+
+💡 Les jurys préfèrent une démo fluide qu’un système réel bancal
+
+🧑‍💻 6. Répartition des rôles (équipe)
+👨‍💻 Dev 1
+Flutter UI (écrans)
+👨‍💻 Dev 2
+logique + géolocalisation
+👨‍💻 Dev 3
+Firebase + notifications
+🎤 1 personne
+pitch + UX + storytelling
+⏱️ 7. Timeline hackathon
+🕐 Jour 1 matin
+définir :
+1 risque principal (ex : inondation)
+parcours utilisateur
+🕐 Jour 1 aprem
+Flutter :
+écran principal
+géolocalisation
+Firebase :
+structure données
+🕐 Jour 2 matin
+logique risque
+checklist dynamique
+🕐 Jour 2 aprem
+notifications
+simulation démo
+🧠 8. Guidelines UX (ce qui fait gagner)
+
+👉 En crise :
+
+pas de texte long
+pas de complexité
+✔️ Règles
+1 écran = 1 info critique
+couleurs :
+vert = safe
+orange = attention
+rouge = danger
+boutons GROS et clairs
+🏆 9. Pitch (structure gagnante)
+
+Problème :
+
+“Aujourd’hui, les alertes sont générales, pas personnalisées”
+
+Solution :
+
+“Une app qui s’adapte à votre position en temps réel”
+
+Démo :
+déplacement → alerte → checklist
+
+Impact :
+
+“Sauver des vies à l’échelle locale”
+
+💡 10. Bonus (si vous avez le temps)
+mode offline
+bouton SOS
+partage position
+🔚 Conclusion
+
+👉 Votre priorité :
+
+simple
+fonctionnel
+impressionnant en démo

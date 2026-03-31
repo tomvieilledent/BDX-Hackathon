@@ -1,0 +1,7 @@
+Frontend (React / JS)
+        ↓
+Backend (Flask)
+        ↓
+ ┌───────────────┬───────────────┐
+ ↓               ↓               ↓
+API Géorisques   API météo       autre API
