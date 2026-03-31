@@ -97,28 +97,3 @@ class GeorisquesService:
         except Exception as e:
             return {"error": f"Failed to fetch seismic risks: {str(e)}"}
     
-    def get_ppr_risks(self, lat: float, lon: float) -> Dict[str, Any]:
-        """
-        Get Plan de Prévention des Risques (PPR) data.
-        
-        Args:
-            lat: Latitude
-            lon: Longitude
-        
-        Returns:
-            Dictionary containing PPR data
-        """
-        try:
-            url = f"{self.BASE_URL}/plans_prevention_risques"
-            params = {
-                "lat": lat,
-                "lon": lon
-            }
-            response = requests.get(url, headers=self.headers, params=params, timeout=10)
-            response.raise_for_status()
-            return response.json()
-        except Exception as e:
-            return {
-                "success": False,
-                "error": f"Failed to fetch PPR risks: {str(e)}"
-            }

@@ -1,0 +1,107 @@
+{
+	"risques": [
+		{
+			"type": "inondation",
+			"nom": "Inondation",
+			"icone": "💧",
+			"couleur": "#1565C0",
+			"numero_urgence": "18",
+			"consignes_urgence": [
+				"Monter immédiatement en étage",
+				"Couper l'électricité et le gaz",
+				"Ne pas prendre la voiture",
+				"Ne pas marcher dans l'eau"
+			],
+			"checklist_avant": [
+				"Eau potable (3L/personne/jour)",
+				"Lampe torche + piles",
+				"Radio à piles",
+				"Médicaments",
+				"Documents importants"
+			],
+			"checklist_pendant": [
+				"Couper électricité",
+				"Monter en hauteur",
+				"Appeler le 15 si personne en danger"
+			],
+			"detection": {
+				"source": "georisques",
+				"type_check": "flood",
+				"endpoint": "/api/georisques",
+				"niveau_alerte": "modéré",
+				"titre_alerte": "Risque d'inondation"
+			}
+		},
+		{
+			"type": "canicule",
+			"nom": "Canicule",
+			"icone": "🌡️",
+			"couleur": "#E65100",
+			"numero_urgence": "15",
+			"consignes_urgence": [
+				"Aller dans un espace frais",
+				"Boire 1,5L d'eau par heure minimum",
+				"Fermer volets côté soleil",
+				"Vérifier les voisins âgés"
+			],
+			"checklist_avant": [
+				"Ventilateur ou climatiseur",
+				"Eau fraîche en stock",
+				"Brumisateur"
+			],
+			"checklist_pendant": [
+				"Ne pas sortir entre 12h et 16h",
+				"Mouiller ses poignets",
+				"Appeler le 15 si malaise"
+			],
+			"detection": {
+				"source": "meteo",
+				"endpoint": "/api/weather/forecast",
+				"meteo_field": "temperature",
+				"seuil_min": 35,
+				"niveau_alerte": "élevé",
+				"titre_alerte": "Alerte Canicule",
+				"message_template": "Température très élevée : {value}°C"
+			}
+		},
+		{
+			"type": "industriel",
+			"nom": "Accident industriel",
+			"icone": "☢️",
+			"couleur": "#4A148C",
+			"numero_urgence": "18",
+			"consignes_urgence": [
+				"Se confiner immédiatement",
+				"Fermer toutes les ouvertures",
+				"Couper ventilation et clim",
+				"Écouter France Bleu Gironde"
+			],
+			"checklist_avant": [
+				"Tissu humide pour boucher aérations",
+				"Radio à piles",
+				"Eau et nourriture pour 24h"
+			],
+			"checklist_pendant": [
+				"Ne pas téléphoner (libérer les lignes)",
+				"Ne pas sortir",
+				"Attendre le signal officiel de fin d'alerte"
+			],
+			"detection": {
+				"source": "georisques",
+				"type_check": "seveso",
+				"endpoint": "/api/georisques/incendies-seveso",
+				"niveau_alerte": "critique",
+				"titre_alerte": "Site SEVESO à proximité",
+				"message_template": "{name} - {status}"
+			}
+		}
+	],
+	"features": [
+		{
+			"name": "Carte interactive",
+			"endpoint": "/api/map",
+			"description": "Combine forêts (IGN) + risques incendie (Géorisques)",
+			"params": ["lat", "lon", "radius"]
+		}
+	]
+}

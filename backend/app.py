@@ -3,6 +3,8 @@ from flask_cors import CORS
 import requests
 from dotenv import load_dotenv
 import os
+import json
+import random
 
 try:
     # Imports relatifs quand le module est chargé comme package (backend.app)
@@ -23,54 +25,75 @@ CORS(app)  # This will enable CORS for all routes
 # Initialize Géorisques service
 georisques_service = GeorisquesService(app.config['GEORISQUES_API_KEY'])
 
-# Mock data for risks and emergency methods
-mock_risks = {
-    "inondation": {
-        "name": "Inondation",
-        "consignes": [
-            "Montez en hauteur",
-            "Coupez l'électricité",
-            "Ne prenez pas votre voiture"
-        ],
-        "checklist": [
-            "Eau potable",
-            "Lampe torche",
-            "Radio",
-            "Médicaments",
-            "Papiers importants"
-        ]
-    },
-    "incendie": {
-        "name": "Incendie de forêt",
-        "consignes": [
-            "Fermez les volets et les fenêtres",
-            "Arrosez les abords de votre maison",
-            "Préparez-vous à évacuer"
-        ],
-        "checklist": [
-            "Vêtements de protection",
-            "Masques",
-            "Eau en grande quantité"
-        ]
-    },
-    "seveso": {
-        "name": "Risque industriel (SEVESO)",
-        "consignes": [
-            "Restez à l'intérieur et calfeutrez portes et fenêtres",
-            "Écoutez la radio pour les consignes des autorités",
-            "Ne fumez pas"
-        ],
-        "checklist": [
-            "Kit de confinement",
-            "Numéros d'urgence",
-            "Radio à piles"
-        ]
-    }
-}
+# Load risks data from JSON file
+
+
+def load_risks_data():
+    """Load risks data from risques.json file"""
+    try:
+        # Get the directory of the current file
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        json_path = os.path.join(base_dir, 'data', 'risques.json')
+
+        with open(json_path, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Transform the data structure: from {"risques": [...]} to {type: risk_obj}
+        risks_dict = {}
+        for risk in data.get('risques', []):
+            risks_dict[risk.get('type')] = risk
+
+        return risks_dict
+    except Exception as e:
+        print(f"Error loading risks data: {e}")
+        return {}
+
+
+# Load risks at app startup
+mock_risks = load_risks_data()
+
+
+def _default_endpoint_for_source(source):
+    if source == "meteo":
+        return "/api/weather/forecast"
+    if source == "georisques":
+        return "/api/georisques"
+    return None
+
+
+def get_required_detection_endpoints():
+    """Return the set of endpoints declared in risques.json detection config."""
+    endpoints = set()
+    for risk_info in mock_risks.values():
+        detection = risk_info.get("detection", {})
+        endpoint = detection.get("endpoint") or _default_endpoint_for_source(
+            detection.get("source")
+        )
+        if endpoint:
+            endpoints.add(endpoint)
+    return endpoints
+
+
+def fetch_weather_data(lat, lon):
+    """Fetch Météo-France data once when at least one risk needs it."""
+    weather_data = None
+    try:
+        api_key = app.config.get('METEO_FRANCE_API_KEY')
+        if api_key:
+            url = f"https://public-api.meteofrance.fr/public/arpege/v2/forecast?lat={lat}&lon={lon}"
+            headers = {"apikey": api_key}
+            response = requests.get(url, headers=headers, timeout=5)
+            if response.status_code == 200:
+                weather_data = response.json()
+    except Exception as e:
+        print(f"Warning: Could not fetch weather data: {e}")
+    return weather_data
+
 
 @app.route('/')
 def index():
     return "Backend for Risk Prevention App is running!"
+
 
 @app.route('/api/risks', methods=['GET'])
 def get_risks():
@@ -78,6 +101,7 @@ def get_risks():
     Returns the list of all documented risks.
     """
     return jsonify(list(mock_risks.keys()))
+
 
 @app.route('/api/risks/<risk_type>', methods=['GET'])
 def get_risk_details(risk_type):
@@ -89,15 +113,253 @@ def get_risk_details(risk_type):
         return jsonify(risk)
     return jsonify({"error": "Risk not found"}), 404
 
+
+def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
+    """
+    Generate alerts by combining Géorisques and Météo France data.
+    Uses detection rules from risques.json for each risk type.
+
+    Args:
+        georisques_data: Risk data from Géorisques API
+        weather_data: Weather forecast from Météo France API
+        lat, lon: Location coordinates
+
+    Returns:
+        List of alert objects
+    """
+    alerts = []
+    alert_id = 1
+
+    # Iterate through all configured risks
+    for risk_type, risk_info in mock_risks.items():
+        detection_config = risk_info.get("detection", {})
+        if not detection_config:
+            continue  # Skip risks without detection config
+
+        source = detection_config.get("source")
+        endpoint = detection_config.get(
+            "endpoint") or _default_endpoint_for_source(source)
+
+        # ===== GEORISQUES-based detection =====
+        if source == "georisques":
+            type_check = detection_config.get("type_check")
+
+            # Check for SEVESO sites
+            if type_check == "seveso" and endpoint in [
+                "/api/georisques",
+                "/api/georisques/incendies-seveso",
+                "/api/map",
+            ]:
+                try:
+                    installations = georisques_data.get(
+                        "risks", {}).get("installations", {})
+                    inst_data = installations.get("data", []) if isinstance(
+                        installations, dict) else []
+
+                    for inst in inst_data:
+                        statut_seveso = (
+                            inst.get("statutSeveso") or "").strip()
+                        if statut_seveso and statut_seveso.lower() != "non seveso":
+                            alerts.append({
+                                "id": alert_id,
+                                "type": risk_type,
+                                "niveau": detection_config.get("niveau_alerte"),
+                                "titre": detection_config.get("titre_alerte"),
+                                "message": detection_config.get("message_template", "").format(
+                                    name=inst.get(
+                                        'raisonSociale', 'Site industriel'),
+                                    status=statut_seveso
+                                ),
+                                "icone": risk_info.get("icone"),
+                                "couleur": risk_info.get("couleur"),
+                                "numero_urgence": risk_info.get("numero_urgence"),
+                                "consignes_urgence": risk_info.get("consignes_urgence"),
+                                "location": {"lat": lat, "lon": lon}
+                            })
+                            alert_id += 1
+                except Exception as e:
+                    print(f"Error processing {risk_type}: {e}")
+
+            # Check for flood risks
+            elif type_check == "flood" and endpoint == "/api/georisques":
+                try:
+                    flood_risks = georisques_data.get(
+                        "risks", {}).get("floods", {})
+                    if flood_risks.get("at_risk") or flood_risks.get("level"):
+                        alerts.append({
+                            "id": alert_id,
+                            "type": risk_type,
+                            "niveau": detection_config.get("niveau_alerte"),
+                            "titre": detection_config.get("titre_alerte"),
+                            "message": "Zone en risque d'inondation selon Géorisques",
+                            "icone": risk_info.get("icone"),
+                            "couleur": risk_info.get("couleur"),
+                            "numero_urgence": risk_info.get("numero_urgence"),
+                            "consignes_urgence": risk_info.get("consignes_urgence"),
+                            "location": {"lat": lat, "lon": lon}
+                        })
+                        alert_id += 1
+                except Exception as e:
+                    print(f"Error processing {risk_type}: {e}")
+
+        # ===== METEO-based detection =====
+        elif source == "meteo":
+            if endpoint != "/api/weather/forecast":
+                continue
+
+            if not weather_data:
+                continue
+
+            meteo_field = detection_config.get("meteo_field")
+            seuil_min = detection_config.get("seuil_min")
+            message_template = detection_config.get(
+                "message_template", "Alerte {type}")
+
+            try:
+                # Try multiple possible field names for flexibility
+                value = weather_data.get(meteo_field)
+                if not value:
+                    # Try alternate names (e.g., temperature vs temp_max, wind_speed vs vitesseVent)
+                    if meteo_field == "temperature":
+                        value = weather_data.get(
+                            "temp_max") or weather_data.get("temperature")
+                    elif meteo_field == "wind_speed":
+                        value = weather_data.get(
+                            "vitesseVent") or weather_data.get("wind_speed")
+
+                if value and value >= seuil_min:
+                    alerts.append({
+                        "id": alert_id,
+                        "type": risk_type,
+                        "niveau": detection_config.get("niveau_alerte"),
+                        "titre": detection_config.get("titre_alerte"),
+                        "message": message_template.format(value=value),
+                        "icone": risk_info.get("icone"),
+                        "couleur": risk_info.get("couleur"),
+                        "numero_urgence": risk_info.get("numero_urgence"),
+                        "consignes_urgence": risk_info.get("consignes_urgence"),
+                        "location": {"lat": lat, "lon": lon}
+                    })
+                    alert_id += 1
+            except Exception as e:
+                print(f"Error processing {risk_type}: {e}")
+
+    return alerts
+
+
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
-    """Endpoint d'alertes sans données mockées.
-
-    Pour l'instant, renvoie simplement une liste vide. À connecter plus tard
-    à une vraie source (Météo-France, Vigicrues, Préfecture, etc.).
     """
+    Get alerts for a specific location.
+    Requires 'lat' and 'lon' query parameters.
+    Returns intelligent alerts combining:
+    - Géorisques data (SEVESO sites, flood risks, seismic risks)
+    - Météo France data (temperature, wind, weather conditions)
+    """
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
 
-    return jsonify([])
+    if not lat or not lon:
+        return jsonify({"error": "Missing lat or lon parameter"}), 400
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except ValueError:
+        return jsonify({"error": "lat and lon must be numeric values"}), 400
+
+    endpoints = get_required_detection_endpoints()
+
+    needs_georisques = bool(
+        endpoints.intersection(
+            {
+                "/api/georisques",
+                "/api/georisques/incendies-seveso",
+                "/api/map",
+            }
+        )
+    )
+    needs_weather = "/api/weather/forecast" in endpoints
+
+    # Fetch only the sources declared in risques.json
+    georisques_data = (
+        georisques_service.get_risks_by_coordinates(
+            lat, lon) if needs_georisques else {}
+    )
+    weather_data = fetch_weather_data(lat, lon) if needs_weather else None
+
+    # Generate combined alerts
+    alerts = generate_alerts_from_risks(
+        georisques_data, weather_data, lat, lon)
+
+    return jsonify(alerts)
+
+
+@app.route('/api/alerts/simulate', methods=['GET'])
+def simulate_alerts():
+    """
+    Get simulated alerts for demonstration.
+    Requires 'lat' and 'lon' query parameters.
+    Optional 'severity' parameter: 'danger', 'warning', or 'mixed' (default: 'mixed')
+    """
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    severity = request.args.get('severity', 'mixed').lower()
+
+    if not lat or not lon:
+        return jsonify({"error": "Missing lat or lon parameter"}), 400
+
+    try:
+        lat = float(lat)
+        lon = float(lon)
+    except ValueError:
+        return jsonify({"error": "lat and lon must be numeric values"}), 400
+
+    if severity not in ['danger', 'warning', 'mixed']:
+        return jsonify({"error": "severity must be 'danger', 'warning', or 'mixed'"}), 400
+
+    # Build simulated alerts from configured risks
+    alerts = []
+    alert_id = 1
+
+    risk_types = list(mock_risks.keys())
+    random.shuffle(risk_types)
+
+    # Select 2-3 random risks to simulate
+    num_alerts = random.randint(2, min(3, len(risk_types)))
+    selected_risks = risk_types[:num_alerts]
+
+    for risk_type in selected_risks:
+        risk_info = mock_risks.get(risk_type)
+        if not risk_info:
+            continue
+
+        # Determine alert level based on severity parameter
+        if severity == 'danger':
+            niveau = 'critique'
+        elif severity == 'warning':
+            niveau = 'modéré'
+        else:  # mixed
+            niveau = random.choice(['critique', 'modéré', 'élevé'])
+
+        # Build alert object
+        alert = {
+            "id": alert_id,
+            "type": risk_type,
+            "niveau": niveau,
+            "titre": risk_info.get("detection", {}).get("titre_alerte", risk_info.get("nom")),
+            "message": f"Alerte simulée {risk_info.get('nom')} - Niveau {niveau}",
+            "icone": risk_info.get("icone"),
+            "couleur": risk_info.get("couleur"),
+            "numero_urgence": risk_info.get("numero_urgence"),
+            "consignes_urgence": risk_info.get("consignes_urgence", []),
+            "location": {"lat": lat, "lon": lon}
+        }
+        alerts.append(alert)
+        alert_id += 1
+
+    return jsonify(alerts)
+
 
 @app.route('/api/weather/forecast', methods=['GET'])
 def get_weather_forecast():
@@ -130,17 +392,16 @@ def get_weather_forecast():
 def get_canicule():
     """Récupère les informations de vigilance canicule via l'API Météo-France.
 
-    Cette route utilise la même clé API que la prévision météo et appelle
+    Cette route réutilise la clé API de Météo-France déjà configurée et appelle
     l'endpoint de vigilance. L'URL exacte dépend de la doc Météo-France ;
-    ici on laisse une URL générique à adapter si besoin pendant le hackathon.
+    adapte-la si besoin pendant le hackathon.
     """
 
     api_key = app.config.get('METEO_FRANCE_API_KEY')
     if not api_key:
         return jsonify({"error": "Météo-France API key is not configured."}), 500
 
-    # TODO: adapter l'URL à l'endpoint de vigilance exacte que tu utilises
-    # (par exemple : carte de vigilance nationale, par département, etc.)
+    # TODO: ajuster cette URL à l'endpoint de vigilance que tu utilises réellement
     vigilance_url = "https://public-api.meteofrance.fr/public/vigilance"
 
     headers = {"apikey": api_key}
@@ -150,8 +411,7 @@ def get_canicule():
         resp.raise_for_status()
         data = resp.json()
 
-        # Exemple basé sur ton pseudo-code :
-        # on filtre les phénomènes dont l'ID est 'canicule'.
+        # Filtre les phénomènes de type "canicule" si la structure correspond
         vigilance_list = data.get("vigilance", [])
         canicule = [
             item
@@ -188,28 +448,6 @@ def get_georisques():
     risks_data = georisques_service.get_risks_by_coordinates(lat, lon, radius)
     return jsonify(risks_data)
 
-@app.route('/api/georisques/ppr', methods=['GET'])
-def get_ppr_risks():
-    """
-    Get Plan de Prévention des Risques (PPR) data.
-    Requires 'lat' and 'lon' query parameters.
-    """
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
-
-    if not lat or not lon:
-        return jsonify({"error": "Missing lat or lon parameter"}), 400
-
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except ValueError:
-        return jsonify({"error": "lat and lon must be numeric values"}), 400
-
-    # Use the Géorisques service to fetch PPR data
-    ppr_data = georisques_service.get_ppr_risks(lat, lon)
-    return jsonify(ppr_data)
-
 
 @app.route('/api/georisques/incendies-seveso', methods=['GET'])
 def get_fire_and_seveso_risks():
@@ -232,10 +470,12 @@ def get_fire_and_seveso_risks():
     except ValueError:
         return jsonify({"error": "lat and lon must be numeric values"}), 400
 
-    risks_data = georisques_service.get_risks_by_coordinates(lat_f, lon_f, radius)
+    risks_data = georisques_service.get_risks_by_coordinates(
+        lat_f, lon_f, radius)
 
     installations = risks_data.get("risks", {}).get("installations", {})
-    data = installations.get("data", []) if isinstance(installations, dict) else []
+    data = installations.get("data", []) if isinstance(
+        installations, dict) else []
 
     seveso_sites = []
     fire_risk_sites = []
@@ -270,26 +510,26 @@ def get_fire_and_seveso_risks():
 
 @app.route('/api/map', methods=['GET'])
 def get_map_data():
-    """Combine les données forêts (IGN) + risques incendie (Géorisques) pour la carte.
+    """Combine forêts (IGN) + risques incendie (Géorisques) pour la carte.
 
     Query params optionnels :
       - lat, lon : position à analyser (défaut = Bordeaux)
+      - radius : rayon de recherche en mètres (défaut = 20000)
     """
-
     # Coordonnées par défaut : Bordeaux
     default_lat = 44.84
     default_lon = -0.58
 
     lat = request.args.get('lat', type=float) or default_lat
     lon = request.args.get('lon', type=float) or default_lon
-
-    # 🔥 Risques (on réutilise notre service existant)
-    # On peut choisir un rayon plus large pour la carte, ex : 20 km
     radius = request.args.get('radius', default=20000, type=int)
+
+    # 🔥 Risques incendie via Géorisques
     risks_data = georisques_service.get_risks_by_coordinates(lat, lon, radius)
 
     installations = risks_data.get("risks", {}).get("installations", {})
-    inst_list = installations.get("data", []) if isinstance(installations, dict) else []
+    inst_list = installations.get("data", []) if isinstance(
+        installations, dict) else []
 
     incendie_risks = []
     for inst in inst_list:
@@ -306,17 +546,14 @@ def get_map_data():
             incendie_risks.append(inst)
 
     # 🌲 Forêts via API Carto Nature (IGN)
-    # Ici on reprend ton exemple : la géométrie est un point lon,lat.
-    # Si l'API renvoie 404, on considère simplement qu'il n'y a pas de données
-    # de forêts disponibles pour cette zone (on évite d'afficher une erreur
-    # côté frontend pendant le hackathon).
+    forets_data = {"features": []}
     try:
         nature_url = f"https://apicarto.ign.fr/api/nature?geom={lon},{lat}"
         nature_resp = requests.get(nature_url, timeout=10)
 
         if nature_resp.status_code == 404:
-            # Endpoint ou données non trouvées : on renvoie une liste vide
-            forets_data = {"features": [], "info": "Aucune donnée forêt IGN (404)"}
+            forets_data = {"features": [],
+                           "info": "Aucune donnée forêt IGN (404)"}
         else:
             nature_resp.raise_for_status()
             forets_data = nature_resp.json()
@@ -324,7 +561,7 @@ def get_map_data():
     except requests.RequestException as e:
         forets_data = {"error": str(e)}
 
-    # Indicateurs simples pour le frontend
+    # Indicateurs pour le frontend
     has_forest_data = False
     if isinstance(forets_data, dict):
         features = forets_data.get("features")
@@ -343,6 +580,7 @@ def get_map_data():
             "has_fire_risks": has_fire_risks,
         }
     )
+
 
 if __name__ == '__main__':
     app.run(debug=True, port=7000)
