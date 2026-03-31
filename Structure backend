@@ -1,0 +1,13 @@
+backend/
+│
+├─ app.py              # Point d'entrée Flask
+├─ requirements.txt    # Librairies Python
+├─ config.py           # Config API / clés
+├─ routes/
+│   ├─ alerts.py       # Endpoints alertes
+│   ├─ risks.py        # Endpoints types de risques
+├─ services/
+│   ├─ meteo_france.py # Appel API Météo-France
+│   ├─ georisques.py   # Appel API Géorisques
+└─ data/
+    └─ mock_alerts.json # Données de test hackathon
