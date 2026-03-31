@@ -125,6 +125,45 @@ def get_weather_forecast():
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/weather/canicule', methods=['GET'])
+def get_canicule():
+    """Récupère les informations de vigilance canicule via l'API Météo-France.
+
+    Cette route utilise la même clé API que la prévision météo et appelle
+    l'endpoint de vigilance. L'URL exacte dépend de la doc Météo-France ;
+    ici on laisse une URL générique à adapter si besoin pendant le hackathon.
+    """
+
+    api_key = app.config.get('METEO_FRANCE_API_KEY')
+    if not api_key:
+        return jsonify({"error": "Météo-France API key is not configured."}), 500
+
+    # TODO: adapter l'URL à l'endpoint de vigilance exacte que tu utilises
+    # (par exemple : carte de vigilance nationale, par département, etc.)
+    vigilance_url = "https://public-api.meteofrance.fr/public/vigilance"
+
+    headers = {"apikey": api_key}
+
+    try:
+        resp = requests.get(vigilance_url, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+
+        # Exemple basé sur ton pseudo-code :
+        # on filtre les phénomènes dont l'ID est 'canicule'.
+        vigilance_list = data.get("vigilance", [])
+        canicule = [
+            item
+            for item in vigilance_list
+            if str(item.get("phenomenon_id")) == "canicule"
+        ]
+
+        return jsonify({"canicule": canicule})
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/georisques', methods=['GET'])
 def get_georisques():
     """
