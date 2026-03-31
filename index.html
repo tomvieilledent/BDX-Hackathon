@@ -22,7 +22,7 @@
     attribution: '&copy; OpenStreetMap'
   }).addTo(map);
 
-  // 🔥 Icône incendie simulée (sans dépendre du front ni des vraies données)
+  // 🔥 Icône incendie (utilisée pour les vrais feux NASA FIRMS et la simulation)
   const fireIcon = L.divIcon({
     html: '<div style="background: #ef4444; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.35);">🔥</div>',
     className: '',
@@ -30,23 +30,74 @@
     iconAnchor: [18, 18],
   });
 
-  // On place le marqueur légèrement au nord du centre pour bien le voir
-  const fireLat = center[0] + 0.01;
-  const fireLon = center[1];
+  // Petite helper pour ajouter un marqueur incendie
+  function addFireMarker(lat, lon, popupText) {
+    L.marker([lat, lon], { icon: fireIcon })
+      .addTo(map)
+      .bindPopup(popupText);
+  }
 
-  L.marker([fireLat, fireLon], { icon: fireIcon })
-    .addTo(map)
-    .bindPopup('🔥 Risque incendie simulé pour la démo');
+  // Simulation locale si l'API NASA ne renvoie aucun feu (ou en cas d'erreur)
+  function simulateLocalFires() {
+    const simulations = [
+      { dLat: 0.01, dLon: 0, label: '🔥 Feu simulé au nord de Bordeaux' },
+      { dLat: -0.015, dLon: 0.02, label: '🔥 Feu simulé au sud-est de Bordeaux' },
+      { dLat: 0.02, dLon: -0.03, label: '🔥 Feu simulé à l\'ouest de Bordeaux' },
+    ];
 
-  // (Optionnel) Appeler ton backend pour voir les vraies données dans la console
-  // mais on ne s'en sert pas pour l'affichage pour l'instant
-  fetch('http://localhost:5000/api/map')
+    simulations.forEach(sim => {
+      const lat = center[0] + sim.dLat;
+      const lon = center[1] + sim.dLon;
+      addFireMarker(lat, lon, sim.label + '<br/><small>(données simulées pour la démo)</small>');
+    });
+  }
+
+  // 🔭 Récupération des feux actifs via ton backend NASA FIRMS
+  // Endpoint backend attendu : /api/fires/nasa?lat=...&lon=...&radius_km=...&days=...
+  const params = new URLSearchParams({
+    lat: center[0],
+    lon: center[1],
+    radius_km: 50,   // rayon en km autour de Bordeaux
+    days: 1          // nombre de jours (1 à 5) pour la fenêtre temporelle NASA FIRMS
+  });
+
+  fetch('http://localhost:5000/api/fires/nasa?' + params.toString())
     .then(res => res.json())
     .then(data => {
-      console.log('Données backend /api/map :', data);
+      console.log('Données backend /api/fires/nasa :', data);
+
+      const fires = data.fires || [];
+
+      if (fires.length === 0) {
+        console.log('Aucun feu NASA FIRMS dans la zone – on affiche des feux simulés pour la démo.');
+        simulateLocalFires();
+        return;
+      }
+
+      fires.forEach(fire => {
+        const lat = parseFloat(fire.latitude);
+        const lon = parseFloat(fire.longitude);
+
+        if (Number.isNaN(lat) || Number.isNaN(lon)) return;
+
+        const brightness = fire.brightness;
+        const confidence = fire.confidence;
+        const date = fire.acq_date;
+        const time = fire.acq_time;
+
+        const popup = `🔥 Feu détecté (NASA FIRMS)<br/>
+Latitude : ${lat.toFixed(3)}, Longitude : ${lon.toFixed(3)}<br/>
+Brightness : ${brightness}<br/>
+Confiance : ${confidence}<br/>
+Acquisition : ${date} ${time}`;
+
+        addFireMarker(lat, lon, popup);
+      });
     })
     .catch(err => {
-      console.error('Erreur d\'appel backend :', err);
+      console.error('Erreur d\'appel backend /api/fires/nasa :', err);
+      // En cas d\'erreur réseau ou backend, on garde quand même une belle démo
+      simulateLocalFires();
     });
 </script>
 
