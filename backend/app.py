@@ -276,42 +276,24 @@ def get_alerts():
     - Géorisques data (SEVESO sites, flood risks, seismic risks)
     - Météo France data (temperature, wind, weather conditions)
     """
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
-
-    if not lat or not lon:
+    # Récupère les coordonnées depuis la requête
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    if lat is None or lon is None:
         return jsonify({"error": "Missing lat or lon parameter"}), 400
 
-    try:
-        lat = float(lat)
-        lon = float(lon)
-    except ValueError:
-        return jsonify({"error": "lat and lon must be numeric values"}), 400
+    # Récupère les données risques et météo
+    georisques_data = georisques_service.get_risks_by_coordinates(lat, lon)
+    # Pour la météo, on prend la première heure de la prévision
+    weather_arr = fetch_weather_multi_points(BORDEAUX_POINTS)
+    weather_data = None
+    if weather_arr and isinstance(weather_arr, list):
+        hourly = compute_hourly_mean(weather_arr)
+        if hourly and len(hourly) > 0:
+            weather_data = hourly[0]
 
-    endpoints = get_required_detection_endpoints()
-
-    needs_georisques = bool(
-        endpoints.intersection(
-            {
-                "/api/georisques",
-                "/api/georisques/incendies-seveso",
-                "/api/map",
-            }
-        )
-    )
-    needs_weather = "/api/weather/forecast" in endpoints
-
-    # Fetch only the sources declared in risques.json
-    georisques_data = (
-        georisques_service.get_risks_by_coordinates(
-            lat, lon) if needs_georisques else {}
-    )
-    weather_data = fetch_weather_data(lat, lon) if needs_weather else None
-
-    # Generate combined alerts
     alerts = generate_alerts_from_risks(
         georisques_data, weather_data, lat, lon)
-
     return jsonify(alerts)
 
 
@@ -442,7 +424,7 @@ def fetch_weather_multi_points(points):
     params = {
         "latitude": latitudes,
         "longitude": longitudes,
-        "hourly": "temperature_2m",
+        "hourly": "temperature_2m,windspeed_10m,weathercode",
         "timezone": "Europe/Paris"
     }
 
@@ -468,16 +450,23 @@ def compute_hourly_mean(response_list):
 
     times = first_result["hourly"]["time"]
 
-    # Gather temperature arrays from all locations
+    # Gather temperature, windspeed, and weathercode arrays from all locations
     temps_all_locations = []
+    winds_all_locations = []
+    weathercodes_all_locations = []
     for result in response_list:
-        if "hourly" in result and "temperature_2m" in result["hourly"]:
-            temps_all_locations.append(result["hourly"]["temperature_2m"])
+        if "hourly" in result:
+            if "temperature_2m" in result["hourly"]:
+                temps_all_locations.append(result["hourly"]["temperature_2m"])
+            if "windspeed_10m" in result["hourly"]:
+                winds_all_locations.append(result["hourly"]["windspeed_10m"])
+            if "weathercode" in result["hourly"]:
+                weathercodes_all_locations.append(
+                    result["hourly"]["weathercode"])
 
     if not temps_all_locations:
         return []
 
-    # Compute hourly means
     nb_locations = len(temps_all_locations)
     nb_hours = len(times)
 
@@ -486,7 +475,26 @@ def compute_hourly_mean(response_list):
         temp_sum = sum(temps_all_locations[loc][i]
                        for loc in range(nb_locations))
         mean_temp = temp_sum / nb_locations
-        result.append({"time": times[i], "temperature_mean": mean_temp})
+
+        wind_mean = None
+        if winds_all_locations:
+            wind_sum = sum(winds_all_locations[loc][i]
+                           for loc in range(len(winds_all_locations)))
+            wind_mean = wind_sum / len(winds_all_locations)
+
+        weathercode = None
+        if weathercodes_all_locations:
+            # Use the most frequent weathercode for this hour
+            codes = [weathercodes_all_locations[loc][i]
+                     for loc in range(len(weathercodes_all_locations))]
+            weathercode = max(set(codes), key=codes.count)
+
+        result.append({
+            "time": times[i],
+            "temperature_mean": mean_temp,
+            "wind_mean": wind_mean,
+            "weathercode": weathercode
+        })
 
     return result
 
@@ -503,6 +511,29 @@ def get_weather_forecast():
 
     if not hourly_mean:
         return jsonify({"error": "Could not fetch weather data"}), 500
+
+    # Ajout qualité de l'air (indice) via Open-Meteo Air Quality API (centre Bordeaux)
+    air_url = "https://air-quality-api.open-meteo.com/v1/air-quality"
+    air_params = {
+        "latitude": 44.84,
+        "longitude": -0.58,
+        "hourly": "european_aqi",
+        "timezone": "Europe/Paris"
+    }
+    air_quality = None
+    try:
+        air_resp = requests.get(air_url, params=air_params, timeout=10)
+        air_resp.raise_for_status()
+        air_data = air_resp.json()
+        if "hourly" in air_data and "european_aqi" in air_data["hourly"]:
+            # AQI for first hour
+            air_quality = air_data["hourly"]["european_aqi"][0]
+    except Exception as e:
+        air_quality = None
+
+    # Ajoute la qualité de l'air et le vent à la première heure (résumé)
+    if hourly_mean:
+        hourly_mean[0]["air_quality"] = air_quality
 
     return jsonify(hourly_mean)
 

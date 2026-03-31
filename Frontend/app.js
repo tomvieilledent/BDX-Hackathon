@@ -81,8 +81,9 @@ async function loadHomeMap() {
 				.bindPopup(`🔥 ${name}`);
 		});
 
+		// Remove incendies and forests counter from status
 		if (status) {
-			status.textContent = `Incendies: ${markerCount} | Forets: ${data.has_forest_data ? 'oui' : 'non'}`;
+			status.textContent = '';
 		}
 	} catch (e) {
 		if (status) status.textContent = `Erreur carte: ${e.message}`;
@@ -94,6 +95,94 @@ async function loadHome() {
 	if (!root) return;
 
 	loadHomeMap();
+
+	// Fetch alerts and show alert tiles if any
+	const alertsSection = qs('alerts-home-section');
+	const alertsContainer = qs('alerts-home-container');
+	if (!alertsSection || !alertsContainer) return;
+
+	try {
+		const { lat, lon } = getCoords();
+		const data = await apiGet(`/api/alerts?lat=${lat}&lon=${lon}`);
+		const alerts = Array.isArray(data) ? data : [];
+		if (alerts.length) {
+			alertsSection.classList.remove('hidden');
+			alertsContainer.innerHTML = alerts.map(a => {
+				const lvl = (a.niveau || '').toLowerCase();
+				return `
+					       <article class="rounded-2xl bg-veille-3 p-4 border border-white/10 mb-3">
+						 <div class="flex items-center justify-between gap-2">
+						   <h3 class="text-white font-semibold">${a.icone || ''} ${a.titre || 'Alerte'}</h3>
+						   <span class="px-2 py-1 rounded-full text-xs font-semibold ${levelClass(lvl)}">${a.niveau || '-'}</span>
+						 </div>
+						 <p class="text-white/90 mt-2">${a.message || ''}</p>
+						 <p class="text-white/70 text-sm mt-2">Type: ${a.type || '-'}</p>
+						 <p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
+					       </article>
+				       `;
+			}).join('');
+		} else {
+			alertsSection.classList.add('hidden');
+			alertsContainer.innerHTML = '';
+		}
+	} catch (e) {
+		alertsSection.classList.add('hidden');
+		alertsContainer.innerHTML = '';
+	}
+
+	// Fetch and display weather below the map
+	const weatherSection = qs('weather-home-section');
+	const weatherContainer = qs('weather-home-container');
+	if (weatherSection && weatherContainer) {
+		try {
+			// On affiche Bordeaux car la météo est centrée sur la ville
+			const city = 'Bordeaux';
+			// Ajoute weathercode à la requête pour l'icône
+			const weatherArr = await apiGet(`/api/weather/forecast?hourly=temperature_2m,weathercode`);
+			let html = '';
+			if (Array.isArray(weatherArr) && weatherArr.length > 0) {
+				const weather = weatherArr[0];
+				// Logo météo selon weathercode (voir WMO)
+				const code = weather.weathercode;
+				let icon = '☀️';
+				if (code !== undefined) {
+					if (code === 0) icon = '☀️'; // Clear
+					else if ([1, 2, 3].includes(code)) icon = '⛅'; // Cloudy
+					else if ([45, 48].includes(code)) icon = '🌫️'; // Fog
+					else if ([51, 53, 55, 56, 57].includes(code)) icon = '🌦️'; // Drizzle
+					else if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) icon = '🌧️'; // Rain
+					else if ([71, 73, 75, 77, 85, 86].includes(code)) icon = '❄️'; // Snow
+					else if ([95, 96, 99].includes(code)) icon = '⛈️'; // Thunderstorm
+				}
+				html += `<div class="flex items-center gap-3 mb-1">
+											 <span style="font-size:2rem;">${icon}</span>
+											 <span class="text-lg font-semibold">${city}</span>
+										   </div>`;
+				if (weather.temperature_mean !== undefined) {
+					html += `<div><span class="font-semibold">Température :</span> ${weather.temperature_mean}°C</div>`;
+				}
+				if (weather.wind_mean !== undefined) {
+					html += `<div><span class="font-semibold">Vent :</span> ${weather.wind_mean.toFixed(1)} km/h</div>`;
+				}
+				if (weather.air_quality !== undefined && weather.air_quality !== null) {
+					// Détermine la couleur et le label AQI
+					let aqi = weather.air_quality;
+					let aqiLabel = '';
+					let aqiColor = '';
+					if (aqi <= 20) { aqiLabel = 'Très bon'; aqiColor = '#22c55e'; }
+					else if (aqi <= 40) { aqiLabel = 'Bon'; aqiColor = '#84cc16'; }
+					else if (aqi <= 60) { aqiLabel = 'Moyen'; aqiColor = '#eab308'; }
+					else if (aqi <= 80) { aqiLabel = 'Médiocre'; aqiColor = '#f59e42'; }
+					else if (aqi <= 100) { aqiLabel = 'Mauvais'; aqiColor = '#ef4444'; }
+					else { aqiLabel = 'Très mauvais'; aqiColor = '#991b1b'; }
+					html += `<div><span class=\"font-semibold\">Qualité de l'air :</span> <span>${aqi} (${aqiLabel})</span></div>`;
+				}
+			}
+			weatherContainer.innerHTML = html || '<div>Aucune donnée météo disponible.</div>';
+		} catch (e) {
+			weatherContainer.innerHTML = '<div class="text-red-300">Erreur météo</div>';
+		}
+	}
 }
 
 function renderAlerts(alerts) {
