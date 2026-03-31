@@ -233,11 +233,20 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                         value = weather_data.get(
                             "vitesseVent") or weather_data.get("wind_speed")
 
-                if value and value >= seuil_min:
+                if value is not None and value >= seuil_min:
+                    niveau = detection_config.get("niveau_alerte")
+                    if risk_type == "canicule":
+                        if value >= 40:
+                            niveau = "critique"
+                        elif value >= 37:
+                            niveau = "élevé"
+                        else:
+                            niveau = "modéré"
+
                     alerts.append({
                         "id": alert_id,
                         "type": risk_type,
-                        "niveau": detection_config.get("niveau_alerte"),
+                        "niveau": niveau,
                         "titre": detection_config.get("titre_alerte"),
                         "message": message_template.format(value=value),
                         "icone": risk_info.get("icone"),
@@ -307,10 +316,12 @@ def simulate_alerts():
     Get simulated alerts for demonstration.
     Requires 'lat' and 'lon' query parameters.
     Optional 'severity' parameter: 'danger', 'warning', or 'mixed' (default: 'mixed')
+    Optional 'temp' parameter: simulated temperature in C for canicule logic.
     """
     lat = request.args.get('lat')
     lon = request.args.get('lon')
     severity = request.args.get('severity', 'mixed').lower()
+    temp = request.args.get('temp')
 
     if not lat or not lon:
         return jsonify({"error": "Missing lat or lon parameter"}), 400
@@ -324,11 +335,24 @@ def simulate_alerts():
     if severity not in ['danger', 'warning', 'mixed']:
         return jsonify({"error": "severity must be 'danger', 'warning', or 'mixed'"}), 400
 
-    # Get real weather data for canicule alerts
-    weather_data = fetch_weather_data(lat, lon)
-    current_temp = None
-    if weather_data and "temperature_mean" in weather_data:
-        current_temp = round(weather_data["temperature_mean"], 1)
+    simulated_temp = None
+    if temp is not None:
+        try:
+            simulated_temp = float(temp)
+        except ValueError:
+            return jsonify({"error": "temp must be a numeric value"}), 400
+
+    canicule_config = mock_risks.get("canicule", {}).get("detection", {})
+    canicule_threshold = canicule_config.get("seuil_min", 35)
+
+    # If no explicit temperature is provided, generate a realistic one for simulation.
+    if simulated_temp is None:
+        if severity == 'danger':
+            simulated_temp = round(random.uniform(38, 44), 1)
+        elif severity == 'warning':
+            simulated_temp = round(random.uniform(35, 38), 1)
+        else:  # mixed
+            simulated_temp = round(random.uniform(33, 41), 1)
 
     # Build simulated alerts from configured risks
     alerts = []
@@ -346,17 +370,29 @@ def simulate_alerts():
         if not risk_info:
             continue
 
-        # Determine alert level based on severity parameter
-        if severity == 'danger':
-            niveau = 'critique'
-        elif severity == 'warning':
-            niveau = 'modéré'
-        else:  # mixed
-            niveau = random.choice(['critique', 'modéré', 'élevé'])
+        # Canicule should only be simulated when the simulated temperature reaches threshold.
+        if risk_type == 'canicule' and simulated_temp < canicule_threshold:
+            continue
+
+        # Determine alert level from temperature for canicule, else keep severity-based simulation.
+        if risk_type == 'canicule':
+            if simulated_temp >= 40:
+                niveau = 'critique'
+            elif simulated_temp >= 37:
+                niveau = 'élevé'
+            else:
+                niveau = 'modéré'
+        else:
+            if severity == 'danger':
+                niveau = 'critique'
+            elif severity == 'warning':
+                niveau = 'modéré'
+            else:  # mixed
+                niveau = random.choice(['critique', 'modéré', 'élevé'])
 
         # Build message with temperature for canicule only
-        if risk_type == 'canicule' and current_temp is not None:
-            message = f"Température actuelle : {current_temp}°C - Niveau {niveau}"
+        if risk_type == 'canicule':
+            message = f"Température simulée : {simulated_temp}°C - Niveau {niveau}"
         else:
             message = f"Alerte simulée {risk_info.get('nom')} - Niveau {niveau}"
 
@@ -373,6 +409,8 @@ def simulate_alerts():
             "consignes_urgence": risk_info.get("consignes_urgence", []),
             "location": {"lat": lat, "lon": lon}
         }
+        if risk_type == 'canicule':
+            alert["temperature"] = simulated_temp
         alerts.append(alert)
         alert_id += 1
 
