@@ -53,6 +53,43 @@ def load_risks_data():
 mock_risks = load_risks_data()
 
 
+def _default_endpoint_for_source(source):
+    if source == "meteo":
+        return "/api/weather/forecast"
+    if source == "georisques":
+        return "/api/georisques"
+    return None
+
+
+def get_required_detection_endpoints():
+    """Return the set of endpoints declared in risques.json detection config."""
+    endpoints = set()
+    for risk_info in mock_risks.values():
+        detection = risk_info.get("detection", {})
+        endpoint = detection.get("endpoint") or _default_endpoint_for_source(
+            detection.get("source")
+        )
+        if endpoint:
+            endpoints.add(endpoint)
+    return endpoints
+
+
+def fetch_weather_data(lat, lon):
+    """Fetch Météo-France data once when at least one risk needs it."""
+    weather_data = None
+    try:
+        api_key = app.config.get('METEO_FRANCE_API_KEY')
+        if api_key:
+            url = f"https://public-api.meteofrance.fr/public/arpege/v2/forecast?lat={lat}&lon={lon}"
+            headers = {"apikey": api_key}
+            response = requests.get(url, headers=headers, timeout=5)
+            if response.status_code == 200:
+                weather_data = response.json()
+    except Exception as e:
+        print(f"Warning: Could not fetch weather data: {e}")
+    return weather_data
+
+
 @app.route('/')
 def index():
     return "Backend for Risk Prevention App is running!"
@@ -100,13 +137,19 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
             continue  # Skip risks without detection config
 
         source = detection_config.get("source")
+        endpoint = detection_config.get(
+            "endpoint") or _default_endpoint_for_source(source)
 
         # ===== GEORISQUES-based detection =====
         if source == "georisques":
             type_check = detection_config.get("type_check")
 
             # Check for SEVESO sites
-            if type_check == "seveso":
+            if type_check == "seveso" and endpoint in [
+                "/api/georisques",
+                "/api/georisques/incendies-seveso",
+                "/api/map",
+            ]:
                 try:
                     installations = georisques_data.get(
                         "risks", {}).get("installations", {})
@@ -138,7 +181,7 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                     print(f"Error processing {risk_type}: {e}")
 
             # Check for flood risks
-            elif type_check == "flood":
+            elif type_check == "flood" and endpoint == "/api/georisques":
                 try:
                     flood_risks = georisques_data.get(
                         "risks", {}).get("floods", {})
@@ -161,6 +204,9 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
 
         # ===== METEO-based detection =====
         elif source == "meteo":
+            if endpoint != "/api/weather/forecast":
+                continue
+
             if not weather_data:
                 continue
 
@@ -222,21 +268,25 @@ def get_alerts():
     except ValueError:
         return jsonify({"error": "lat and lon must be numeric values"}), 400
 
-    # Get risks data from Géorisques API
-    georisques_data = georisques_service.get_risks_by_coordinates(lat, lon)
+    endpoints = get_required_detection_endpoints()
 
-    # Get weather data from Météo France API
-    weather_data = None
-    try:
-        api_key = app.config.get('METEO_FRANCE_API_KEY')
-        if api_key:
-            url = f"https://public-api.meteofrance.fr/public/arpege/v2/forecast?lat={lat}&lon={lon}"
-            headers = {"apikey": api_key}
-            response = requests.get(url, headers=headers, timeout=5)
-            if response.status_code == 200:
-                weather_data = response.json()
-    except Exception as e:
-        print(f"Warning: Could not fetch weather data: {e}")
+    needs_georisques = bool(
+        endpoints.intersection(
+            {
+                "/api/georisques",
+                "/api/georisques/incendies-seveso",
+                "/api/map",
+            }
+        )
+    )
+    needs_weather = "/api/weather/forecast" in endpoints
+
+    # Fetch only the sources declared in risques.json
+    georisques_data = (
+        georisques_service.get_risks_by_coordinates(
+            lat, lon) if needs_georisques else {}
+    )
+    weather_data = fetch_weather_data(lat, lon) if needs_weather else None
 
     # Generate combined alerts
     alerts = generate_alerts_from_risks(
@@ -442,7 +492,8 @@ def get_map_data():
     risks_data = georisques_service.get_risks_by_coordinates(lat, lon, radius)
 
     installations = risks_data.get("risks", {}).get("installations", {})
-    inst_list = installations.get("data", []) if isinstance(installations, dict) else []
+    inst_list = installations.get("data", []) if isinstance(
+        installations, dict) else []
 
     incendie_risks = []
     for inst in inst_list:
@@ -465,7 +516,8 @@ def get_map_data():
         nature_resp = requests.get(nature_url, timeout=10)
 
         if nature_resp.status_code == 404:
-            forets_data = {"features": [], "info": "Aucune donnée forêt IGN (404)"}
+            forets_data = {"features": [],
+                           "info": "Aucune donnée forêt IGN (404)"}
         else:
             nature_resp.raise_for_status()
             forets_data = nature_resp.json()

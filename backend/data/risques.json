@@ -27,6 +27,7 @@
 			"detection": {
 				"source": "georisques",
 				"type_check": "flood",
+				"endpoint": "/api/georisques",
 				"niveau_alerte": "modéré",
 				"titre_alerte": "Risque d'inondation"
 			}
@@ -55,6 +56,7 @@
 			],
 			"detection": {
 				"source": "meteo",
+				"endpoint": "/api/weather/forecast",
 				"meteo_field": "temperature",
 				"seuil_min": 35,
 				"niveau_alerte": "élevé",
@@ -87,10 +89,19 @@
 			"detection": {
 				"source": "georisques",
 				"type_check": "seveso",
+				"endpoint": "/api/georisques/incendies-seveso",
 				"niveau_alerte": "critique",
 				"titre_alerte": "Site SEVESO à proximité",
 				"message_template": "{name} - {status}"
 			}
+		}
+	],
+	"features": [
+		{
+			"name": "Carte interactive",
+			"endpoint": "/api/map",
+			"description": "Combine forêts (IGN) + risques incendie (Géorisques)",
+			"params": ["lat", "lon", "radius"]
 		}
 	]
 }
