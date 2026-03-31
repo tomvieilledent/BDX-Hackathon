@@ -422,5 +422,77 @@ def get_fire_and_seveso_risks():
     )
 
 
+@app.route('/api/map', methods=['GET'])
+def get_map_data():
+    """Combine forêts (IGN) + risques incendie (Géorisques) pour la carte.
+
+    Query params optionnels :
+      - lat, lon : position à analyser (défaut = Bordeaux)
+      - radius : rayon de recherche en mètres (défaut = 20000)
+    """
+    # Coordonnées par défaut : Bordeaux
+    default_lat = 44.84
+    default_lon = -0.58
+
+    lat = request.args.get('lat', type=float) or default_lat
+    lon = request.args.get('lon', type=float) or default_lon
+    radius = request.args.get('radius', default=20000, type=int)
+
+    # 🔥 Risques incendie via Géorisques
+    risks_data = georisques_service.get_risks_by_coordinates(lat, lon, radius)
+
+    installations = risks_data.get("risks", {}).get("installations", {})
+    inst_list = installations.get("data", []) if isinstance(installations, dict) else []
+
+    incendie_risks = []
+    for inst in inst_list:
+        raison = (inst.get("raisonSociale") or "").lower()
+        rubriques = inst.get("rubriques", []) or []
+        has_fire_keyword = "incend" in raison or "feu" in raison
+        if not has_fire_keyword:
+            for rub in rubriques:
+                nature = (rub.get("nature") or "").lower()
+                if "incend" in nature or "feu" in nature:
+                    has_fire_keyword = True
+                    break
+        if has_fire_keyword:
+            incendie_risks.append(inst)
+
+    # 🌲 Forêts via API Carto Nature (IGN)
+    forets_data = {"features": []}
+    try:
+        nature_url = f"https://apicarto.ign.fr/api/nature?geom={lon},{lat}"
+        nature_resp = requests.get(nature_url, timeout=10)
+
+        if nature_resp.status_code == 404:
+            forets_data = {"features": [], "info": "Aucune donnée forêt IGN (404)"}
+        else:
+            nature_resp.raise_for_status()
+            forets_data = nature_resp.json()
+
+    except requests.RequestException as e:
+        forets_data = {"error": str(e)}
+
+    # Indicateurs pour le frontend
+    has_forest_data = False
+    if isinstance(forets_data, dict):
+        features = forets_data.get("features")
+        if isinstance(features, list) and len(features) > 0:
+            has_forest_data = True
+
+    has_fire_risks = len(incendie_risks) > 0
+
+    return jsonify(
+        {
+            "center": {"lat": lat, "lon": lon},
+            "radius": radius,
+            "forets": forets_data,
+            "incendies": incendie_risks,
+            "has_forest_data": has_forest_data,
+            "has_fire_risks": has_fire_risks,
+        }
+    )
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=7000)
