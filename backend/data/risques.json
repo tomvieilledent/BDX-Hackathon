@@ -101,7 +101,11 @@
 			"name": "Carte interactive",
 			"endpoint": "/api/map",
 			"description": "Combine forêts (IGN) + risques incendie (Géorisques)",
-			"params": ["lat", "lon", "radius"]
+			"params": [
+				"lat",
+				"lon",
+				"radius"
+			]
 		}
 	]
 }

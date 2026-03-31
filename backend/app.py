@@ -80,16 +80,16 @@ def fetch_weather_data(lat, lon):
     try:
         # Call our Open-Meteo endpoint to get aggregated Bordeaux region forecast
         data = fetch_weather_multi_points(BORDEAUX_POINTS)
-        
+
         if data is None or len(data) == 0:
             return None
-        
+
         # Extract current/first hour temperature from the first location
         hourly_data = compute_hourly_mean(data)
         if hourly_data and len(hourly_data) > 0:
-            # Return first hour's temperature as "current" 
+            # Return first hour's temperature as "current"
             return {"temperature_mean": hourly_data[0]["temperature_mean"]}
-        
+
         return None
     except Exception as e:
         print(f"Warning: Could not fetch weather data: {e}")
@@ -324,6 +324,12 @@ def simulate_alerts():
     if severity not in ['danger', 'warning', 'mixed']:
         return jsonify({"error": "severity must be 'danger', 'warning', or 'mixed'"}), 400
 
+    # Get real weather data for canicule alerts
+    weather_data = fetch_weather_data(lat, lon)
+    current_temp = None
+    if weather_data and "temperature_mean" in weather_data:
+        current_temp = round(weather_data["temperature_mean"], 1)
+
     # Build simulated alerts from configured risks
     alerts = []
     alert_id = 1
@@ -348,13 +354,19 @@ def simulate_alerts():
         else:  # mixed
             niveau = random.choice(['critique', 'modéré', 'élevé'])
 
+        # Build message with temperature for canicule only
+        if risk_type == 'canicule' and current_temp is not None:
+            message = f"Température actuelle : {current_temp}°C - Niveau {niveau}"
+        else:
+            message = f"Alerte simulée {risk_info.get('nom')} - Niveau {niveau}"
+
         # Build alert object
         alert = {
             "id": alert_id,
             "type": risk_type,
             "niveau": niveau,
             "titre": risk_info.get("detection", {}).get("titre_alerte", risk_info.get("nom")),
-            "message": f"Alerte simulée {risk_info.get('nom')} - Niveau {niveau}",
+            "message": message,
             "icone": risk_info.get("icone"),
             "couleur": risk_info.get("couleur"),
             "numero_urgence": risk_info.get("numero_urgence"),
@@ -390,7 +402,7 @@ def fetch_weather_multi_points(points):
         "hourly": "temperature_2m",
         "timezone": "Europe/Paris"
     }
-    
+
     try:
         resp = requests.get(base_url, params=params, timeout=10)
         resp.raise_for_status()
@@ -405,33 +417,34 @@ def compute_hourly_mean(response_list):
     response_list is a list of result objects from Open-Meteo (one per location)"""
     if not response_list or not isinstance(response_list, list) or len(response_list) == 0:
         return []
-    
+
     # Extract hourly data from first location to get times
     first_result = response_list[0]
     if "hourly" not in first_result or "time" not in first_result["hourly"]:
         return []
-    
+
     times = first_result["hourly"]["time"]
-    
+
     # Gather temperature arrays from all locations
     temps_all_locations = []
     for result in response_list:
         if "hourly" in result and "temperature_2m" in result["hourly"]:
             temps_all_locations.append(result["hourly"]["temperature_2m"])
-    
+
     if not temps_all_locations:
         return []
-    
+
     # Compute hourly means
     nb_locations = len(temps_all_locations)
     nb_hours = len(times)
-    
+
     result = []
     for i in range(nb_hours):
-        temp_sum = sum(temps_all_locations[loc][i] for loc in range(nb_locations))
+        temp_sum = sum(temps_all_locations[loc][i]
+                       for loc in range(nb_locations))
         mean_temp = temp_sum / nb_locations
         result.append({"time": times[i], "temperature_mean": mean_temp})
-    
+
     return result
 
 
