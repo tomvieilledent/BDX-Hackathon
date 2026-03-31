@@ -10,10 +10,12 @@ try:
     # Imports relatifs quand le module est chargé comme package (backend.app)
     from .config import Config
     from .services.georisques import GeorisquesService
+    from .services.nasa_firms import NasaFirmsService
 except (ImportError, ValueError):
     # Fallback quand on exécute directement backend/app.py
     from config import Config
     from services.georisques import GeorisquesService
+    from services.nasa_firms import NasaFirmsService
 
 # Load environment variables from .env file
 load_dotenv()
@@ -24,6 +26,9 @@ CORS(app)  # This will enable CORS for all routes
 
 # Initialize Géorisques service
 georisques_service = GeorisquesService(app.config['GEORISQUES_API_KEY'])
+
+# Initialize NASA FIRMS service (feux actifs MODIS/VIIRS)
+nasa_firms_service = NasaFirmsService(app.config.get('NASA_FIRMS_API_KEY'))
 
 # Load risks data from JSON file
 
@@ -423,6 +428,83 @@ def get_canicule():
 
     except requests.exceptions.RequestException as e:
         return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/fires/nasa', methods=['GET'])
+def get_nasa_fires():
+    """Retourne les feux actifs autour d'un point via NASA FIRMS/MODIS.
+
+        Query params :
+            - lat, lon : centre (obligatoire)
+            - radius_km : rayon en kilomètres (défaut = 50)
+            - days : fenêtre temporelle en jours (1 à 5, défaut = 1)
+            - product : produit NASA (défaut = "MODIS_NRT")
+
+    Réponse :
+      {
+    "center": {"lat": ..., "lon": ...},
+    "radius_km": 50,
+    "days": 1,
+    "product": "MODIS_NRT",
+        "fires": [
+          { "latitude": ..., "longitude": ..., ... },
+          ...
+        ]
+      }
+    """
+
+    if not nasa_firms_service or not nasa_firms_service.api_key:
+        return jsonify({"error": "NASA_FIRMS_API_KEY is not configured."}), 500
+
+    lat = request.args.get('lat')
+    lon = request.args.get('lon')
+    if not lat or not lon:
+        return jsonify({"error": "Missing lat or lon parameter"}), 400
+
+    try:
+        lat_f = float(lat)
+        lon_f = float(lon)
+    except ValueError:
+        return jsonify({"error": "lat and lon must be numeric values"}), 400
+
+    radius_km = request.args.get('radius_km', default=50, type=float)
+    days = request.args.get('days', default=1, type=int)
+    product = request.args.get('product', default='MODIS_NRT')
+
+    # Approximation simple : 1° ~ 111 km (ok pour un hackathon)
+    radius_deg = radius_km / 111.0
+    min_lat = lat_f - radius_deg
+    max_lat = lat_f + radius_deg
+    min_lon = lon_f - radius_deg
+    max_lon = lon_f + radius_deg
+
+    try:
+        fires = nasa_firms_service.get_active_fires_bbox(
+            min_lat=min_lat,
+            min_lon=min_lon,
+            max_lat=max_lat,
+            max_lon=max_lon,
+            product=product,
+            day_range=days,
+        )
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 500
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 502
+
+    return jsonify(
+        {
+            "center": {"lat": lat_f, "lon": lon_f},
+            "radius_km": radius_km,
+            "days": days,
+            "product": product,
+            "fires": fires,
+        }
+    )
+
+
+# --- Routes FireCaster supprimées à la demande :
+# /api/firecaster/init, /api/firecaster/step, /api/firecaster/state
 
 @app.route('/api/georisques', methods=['GET'])
 def get_georisques():
