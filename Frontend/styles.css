@@ -1,0 +1,92 @@
+:root {
+  --veille-1: #007b91;
+  --veille-2: #e3511d;
+  --veille-3: #004c5d; 
+  --veille-4: #00222a; 
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
+
+/* ---------------- Fonts ---------------- */
+.font-anton {
+  font-family:
+    'Anton', 'Futura', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+}
+.font-futura {
+  font-family: 'Futura', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
+}
+
+/* ---------------- Veille 1 (anciennement Blue) ---------------- */
+.text-veille-1 {
+  color: var(--veille-1) !important;
+}
+.bg-veille-1 {
+  background-color: var(--veille-1) !important;
+}
+.border-veille-1 {
+  border-color: var(--veille-1) !important;
+}
+.fill-veille-1 {
+  fill: var(--veille-1) !important;
+}
+.stroke-veille-1 {
+  stroke: var(--veille-1) !important;
+}
+
+/* ---------------- Veille 2 (anciennement Orange) ---------------- */
+.text-veille-2 {
+  color: var(--veille-2) !important;
+}
+.bg-veille-2 {
+  background-color: var(--veille-2) !important;
+}
+.border-veille-2 {
+  border-color: var(--veille-2) !important;
+}
+.fill-veille-2 {
+  fill: var(--veille-2) !important;
+}
+.stroke-veille-2 {
+  stroke: var(--veille-2) !important;
+}
+
+/* ---------------- Veille 3 (anciennement Dark) ---------------- */
+.text-veille-3 {
+  color: var(--veille-3) !important;
+}
+.bg-veille-3 {
+  background-color: var(--veille-3) !important;
+}
+.border-veille-3 {
+  border-color: var(--veille-3) !important;
+}
+.fill-veille-3 {
+  fill: var(--veille-3) !important;
+}
+.stroke-veille-3 {
+  stroke: var(--veille-3) !important;
+}
+
+/* ---------------- Veille 4 (anciennement Accent) ---------------- */
+.text-veille-4 {
+  color: var(--veille-4) !important;
+}
+.bg-veille-4 {
+  background-color: var(--veille-4) !important;
+}
+.border-veille-4 {
+  border-color: var(--veille-4) !important;
+}
+.fill-veille-4 {
+  fill: var(--veille-4) !important;
+}
+.stroke-veille-4 {
+  stroke: var(--veille-4) !important;
+}
+
+/* ---------------- Helpers ---------------- */
+/* Small helper to increase selector specificity without !important:
+   use `.title.font-anton` in HTML when necessary */
+.title.font-anton {
+  font-family: 'Anton', 'Futura', sans-serif;
+}
