@@ -28,12 +28,21 @@
   </header>
   <main class="min-h-screen pt-16 pb-24 bg-veille-4">
     <div class="container mx-auto px-4" id="home-content">
+      <section id="alerts-home-section" class="mb-4 hidden">
+        <div id="alerts-home-container"></div>
+      </section>
       <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2">
         <div class="flex items-center justify-between gap-3 mb-3">
           <h2 class="text-white font-semibold">Carte des risques</h2>
           <p id="map-status" class="text-white/80 text-xs">Chargement...</p>
         </div>
         <div id="home-map" class="w-full rounded-xl overflow-hidden border border-white/20" style="height: 300px"></div>
+      </section>
+      <section id="weather-home-section" class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
+        <div class="flex items-center gap-3 mb-2">
+          <h2 class="text-white font-semibold text-lg">Météo</h2>
+        </div>
+        <div id="weather-home-container" class="text-white/90"></div>
       </section>
     </div>
   </main>
