@@ -91,25 +91,13 @@ def get_risk_details(risk_type):
 
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
-    # For the hackathon, we can simulate alerts.
-    # In a real app, this would fetch data from external APIs.
-    simulated_alerts = [
-        {
-            "id": 1,
-            "type": "inondation",
-            "zone": "Bordeaux Nord",
-            "niveau": "élevé",
-            "message": "Risque d'inondation élevé dans la zone de Bordeaux Nord. Préparez-vous."
-        },
-        {
-            "id": 2,
-            "type": "seveso",
-            "zone": "Bassens",
-            "niveau": "modéré",
-            "message": "Incident sur un site SEVESO à Bassens. Restez informés."
-        }
-    ]
-    return jsonify(simulated_alerts)
+    """Endpoint d'alertes sans données mockées.
+
+    Pour l'instant, renvoie simplement une liste vide. À connecter plus tard
+    à une vraie source (Météo-France, Vigicrues, Préfecture, etc.).
+    """
+
+    return jsonify([])
 
 @app.route('/api/weather/forecast', methods=['GET'])
 def get_weather_forecast():
@@ -237,6 +225,83 @@ def get_fire_and_seveso_risks():
             "location": {"lat": lat_f, "lon": lon_f, "radius": radius},
             "seveso_sites": seveso_sites,
             "fire_risk_sites": fire_risk_sites,
+        }
+    )
+
+
+@app.route('/api/map', methods=['GET'])
+def get_map_data():
+    """Combine les données forêts (IGN) + risques incendie (Géorisques) pour la carte.
+
+    Query params optionnels :
+      - lat, lon : position à analyser (défaut = Bordeaux)
+    """
+
+    # Coordonnées par défaut : Bordeaux
+    default_lat = 44.84
+    default_lon = -0.58
+
+    lat = request.args.get('lat', type=float) or default_lat
+    lon = request.args.get('lon', type=float) or default_lon
+
+    # 🔥 Risques (on réutilise notre service existant)
+    # On peut choisir un rayon plus large pour la carte, ex : 20 km
+    radius = request.args.get('radius', default=20000, type=int)
+    risks_data = georisques_service.get_risks_by_coordinates(lat, lon, radius)
+
+    installations = risks_data.get("risks", {}).get("installations", {})
+    inst_list = installations.get("data", []) if isinstance(installations, dict) else []
+
+    incendie_risks = []
+    for inst in inst_list:
+        raison = (inst.get("raisonSociale") or "").lower()
+        rubriques = inst.get("rubriques", []) or []
+        has_fire_keyword = "incend" in raison or "feu" in raison
+        if not has_fire_keyword:
+            for rub in rubriques:
+                nature = (rub.get("nature") or "").lower()
+                if "incend" in nature or "feu" in nature:
+                    has_fire_keyword = True
+                    break
+        if has_fire_keyword:
+            incendie_risks.append(inst)
+
+    # 🌲 Forêts via API Carto Nature (IGN)
+    # Ici on reprend ton exemple : la géométrie est un point lon,lat.
+    # Si l'API renvoie 404, on considère simplement qu'il n'y a pas de données
+    # de forêts disponibles pour cette zone (on évite d'afficher une erreur
+    # côté frontend pendant le hackathon).
+    try:
+        nature_url = f"https://apicarto.ign.fr/api/nature?geom={lon},{lat}"
+        nature_resp = requests.get(nature_url, timeout=10)
+
+        if nature_resp.status_code == 404:
+            # Endpoint ou données non trouvées : on renvoie une liste vide
+            forets_data = {"features": [], "info": "Aucune donnée forêt IGN (404)"}
+        else:
+            nature_resp.raise_for_status()
+            forets_data = nature_resp.json()
+
+    except requests.RequestException as e:
+        forets_data = {"error": str(e)}
+
+    # Indicateurs simples pour le frontend
+    has_forest_data = False
+    if isinstance(forets_data, dict):
+        features = forets_data.get("features")
+        if isinstance(features, list) and len(features) > 0:
+            has_forest_data = True
+
+    has_fire_risks = len(incendie_risks) > 0
+
+    return jsonify(
+        {
+            "center": {"lat": lat, "lon": lon},
+            "radius": radius,
+            "forets": forets_data,
+            "incendies": incendie_risks,
+            "has_forest_data": has_forest_data,
+            "has_fire_risks": has_fire_risks,
         }
     )
 
