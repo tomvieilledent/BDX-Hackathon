@@ -57,7 +57,7 @@
 			"detection": {
 				"source": "meteo",
 				"endpoint": "/api/weather/forecast",
-				"meteo_field": "temperature",
+				"meteo_field": "temperature_mean",
 				"seuil_min": 35,
 				"niveau_alerte": "élevé",
 				"titre_alerte": "Alerte Canicule",

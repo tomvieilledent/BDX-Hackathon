@@ -75,19 +75,25 @@ def get_required_detection_endpoints():
 
 
 def fetch_weather_data(lat, lon):
-    """Fetch Météo-France data once when at least one risk needs it."""
-    weather_data = None
+    """Fetch current weather data using Open-Meteo aggregated endpoint.
+    Returns dict with current temperature from the aggregated forecast."""
     try:
-        api_key = app.config.get('METEO_FRANCE_API_KEY')
-        if api_key:
-            url = f"https://public-api.meteofrance.fr/public/arpege/v2/forecast?lat={lat}&lon={lon}"
-            headers = {"apikey": api_key}
-            response = requests.get(url, headers=headers, timeout=5)
-            if response.status_code == 200:
-                weather_data = response.json()
+        # Call our Open-Meteo endpoint to get aggregated Bordeaux region forecast
+        data = fetch_weather_multi_points(BORDEAUX_POINTS)
+        
+        if data is None or len(data) == 0:
+            return None
+        
+        # Extract current/first hour temperature from the first location
+        hourly_data = compute_hourly_mean(data)
+        if hourly_data and len(hourly_data) > 0:
+            # Return first hour's temperature as "current" 
+            return {"temperature_mean": hourly_data[0]["temperature_mean"]}
+        
+        return None
     except Exception as e:
         print(f"Warning: Could not fetch weather data: {e}")
-    return weather_data
+        return None
 
 
 @app.route('/')
@@ -361,31 +367,96 @@ def simulate_alerts():
     return jsonify(alerts)
 
 
+# Bordeaux region points for weather aggregation
+BORDEAUX_POINTS = [
+    (44.84, -0.58),  # centre
+    (44.99, -0.58),  # nord
+    (44.69, -0.58),  # sud
+    (44.84, -0.38),  # est
+    (44.84, -0.78),  # ouest
+]
+
+
+def fetch_weather_multi_points(points):
+    """Fetch temperature data from Open-Meteo API for multiple points.
+    Returns list of results, one per point."""
+    base_url = "https://api.open-meteo.com/v1/forecast"
+    latitudes = ",".join(str(lat) for lat, _ in points)
+    longitudes = ",".join(str(lon) for _, lon in points)
+
+    params = {
+        "latitude": latitudes,
+        "longitude": longitudes,
+        "hourly": "temperature_2m",
+        "timezone": "Europe/Paris"
+    }
+    
+    try:
+        resp = requests.get(base_url, params=params, timeout=10)
+        resp.raise_for_status()
+        return resp.json()  # Returns list of location results
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching weather from Open-Meteo: {e}")
+        return None
+
+
+def compute_hourly_mean(response_list):
+    """Compute hourly mean temperature across all locations.
+    response_list is a list of result objects from Open-Meteo (one per location)"""
+    if not response_list or not isinstance(response_list, list) or len(response_list) == 0:
+        return []
+    
+    # Extract hourly data from first location to get times
+    first_result = response_list[0]
+    if "hourly" not in first_result or "time" not in first_result["hourly"]:
+        return []
+    
+    times = first_result["hourly"]["time"]
+    
+    # Gather temperature arrays from all locations
+    temps_all_locations = []
+    for result in response_list:
+        if "hourly" in result and "temperature_2m" in result["hourly"]:
+            temps_all_locations.append(result["hourly"]["temperature_2m"])
+    
+    if not temps_all_locations:
+        return []
+    
+    # Compute hourly means
+    nb_locations = len(temps_all_locations)
+    nb_hours = len(times)
+    
+    result = []
+    for i in range(nb_hours):
+        temp_sum = sum(temps_all_locations[loc][i] for loc in range(nb_locations))
+        mean_temp = temp_sum / nb_locations
+        result.append({"time": times[i], "temperature_mean": mean_temp})
+    
+    return result
+
+
 @app.route('/api/weather/forecast', methods=['GET'])
 def get_weather_forecast():
     """
-    Get weather forecast from Météo-France API.
-    Requires 'lat' and 'lon' query parameters.
+    Get weather forecast using Open-Meteo API aggregated over Bordeaux region.
+    Optional 'lat' and 'lon' parameters (ignored, uses Bordeaux region).
+    Returns hourly temperature mean across 5 points (center, N, S, E, W).
     """
-    lat = request.args.get('lat')
-    lon = request.args.get('lon')
+    data = fetch_weather_multi_points(BORDEAUX_POINTS)
+    hourly_mean = compute_hourly_mean(data)
 
-    if not lat or not lon:
-        return jsonify({"error": "Missing lat or lon parameter"}), 400
+    if not hourly_mean:
+        return jsonify({"error": "Could not fetch weather data"}), 500
 
-    api_key = app.config['METEO_FRANCE_API_KEY']
-    if not api_key:
-        return jsonify({"error": "Météo-France API key is not configured."}), 500
+    return jsonify(hourly_mean)
 
-    url = f"https://public-api.meteofrance.fr/public/arpege/v2/forecast?lat={lat}&lon={lon}"
-    headers = {"apikey": api_key}
 
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()  # Raise an exception for bad status codes
-        return jsonify(response.json())
-    except requests.exceptions.RequestException as e:
-        return jsonify({"error": str(e)}), 500
+@app.route('/api/weather/bordeaux-radius', methods=['GET'])
+def get_weather_bordeaux_radius():
+    """
+    Alias for /api/weather/forecast - weather aggregated over Bordeaux region.
+    """
+    return get_weather_forecast()
 
 
 @app.route('/api/georisques', methods=['GET'])
