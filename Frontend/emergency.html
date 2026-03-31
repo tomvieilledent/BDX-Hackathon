@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="fr">
+
+<head>
+  <title>Urgence</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header>
+    <div class="header fixed top-0 left-0 w-full h-12 bg-veille-4">
+      <div class="topbar h-12 bg-veille-3 flex rounded-full items-center px-4 m-2">
+        <div class="logo w-16 h- bg-transparent rounded-">
+          <img src="images/logo.png" alt="#" />
+        </div>
+        <div class="title-rect flex-1 h-8 bg-veille-1 rounded-full ml-3 flex items-center justify-center px-3">
+          <p class="text-lg sm:text-2xl font-anton text-white">
+            Veille Bordeaux
+          </p>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="min-h-screen pt-16 pb-24 bg-veille-4">
+    <div class="container mx-auto px-4">
+      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
+        <h1 class="text-white text-xl font-anton">Numeros d'urgence</h1>
+        <p class="text-white/80 text-sm mt-2">Liste derivee des risques backend.</p>
+        <ul id="emergency-list" class="mt-4 space-y-3"></ul>
+      </section>
+    </div>
+  </main>
+  <footer>
+    <!-- Navbar -->
+    <div class="fixed bottom-0 left-0 w-full">
+      <div class="navbar-font bg bg-veille-4 m-2">
+        <ul class="navbar bg-veille-3 flex items-center justify-center rounded-full">
+          <li class="navbar-home w-16 h-8 bg-veille-1 rounded-2xl flex items-center justify-center m-1.5">
+            <a href="index.html" class="block w-full h-full flex items-center justify-center">
+              <i class="fa-solid fa-house text-xl text-white"></i>
+            </a>
+          </li>
+          <li class="navbar-preparation w-16 h-8 bg-veille-1 rounded-2xl flex items-center justify-center m-1.5">
+            <a href="preparation.html" class="block w-full h-full flex items-center justify-center">
+              <i class="fa-solid fa-shield text-xl text-white"></i>
+            </a>
+          </li>
+          <li class="navbar-alert w-16 h-8 bg-veille-1 rounded-2xl flex items-center justify-center m-1.5">
+            <a href="alert.html" class="block w-full h-full flex items-center justify-center">
+              <i class="fa-solid fa-bell text-xl text-white"></i>
+            </a>
+          </li>
+          <li class="navbar-emergency w-16 h-8 bg-veille-1 rounded-2xl flex items-center justify-center m-1.5"
+            aria-current="page">
+            <span class="block w-full h-full flex items-center justify-center">
+              <i class="fa-solid fa-phone text-xl text-veille-2"></i>
+            </span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </footer>
+  <script src="app.js"></script>
+</body>
+
+</html>

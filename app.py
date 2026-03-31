@@ -1,11 +1,14 @@
-"""Point d'entrée pour démarrer le backend Flask depuis la racine du projet.
+"""Point d'entrée pour lancer l'application Flask du backend.
 
-Permet de lancer `python app.py` à la racine sans manipuler les chemins à la main.
+Ce fichier permet de démarrer le serveur avec :
+    .venv/bin/python app.py
+
+Il importe simplement l'objet `app` défini dans `backend/app.py`.
 """
 
 from backend.app import app  # importe l'objet Flask défini dans backend/app.py
 
 
 if __name__ == "__main__":
-    # Lance le serveur en debug sur le port 5000
+    # On utilise le port 5000 pour être cohérent avec les appels depuis le front (index.html, etc.)
     app.run(debug=True, port=5000)
