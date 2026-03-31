@@ -28,27 +28,9 @@
   </header>
   <main class="min-h-screen pt-16 pb-24 bg-veille-4">
     <div class="container mx-auto px-4" id="home-content">
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
-        <h1 class="text-white text-xl font-anton">Tableau de bord</h1>
-        <p class="text-white/80 mt-2 text-sm">Backend: http://127.0.0.1:7000</p>
-        <p class="text-white/90 mt-2">Coordonnees: <span id="coord-value">44.840, -0.580</span></p>
-        <button id="use-position" class="mt-3 px-3 py-2 rounded-lg bg-veille-2 text-white font-semibold">Utiliser ma
-          position</button>
-      </section>
-      <section class="grid grid-cols-2 gap-3 mt-4">
-        <article class="rounded-2xl bg-veille-3 p-4 border border-white/10">
-          <p class="text-white/70 text-sm">Risques</p>
-          <p id="risk-count" class="text-white text-2xl font-bold mt-1">-</p>
-        </article>
-        <article class="rounded-2xl bg-veille-3 p-4 border border-white/10">
-          <p class="text-white/70 text-sm">Alertes simulees</p>
-          <p id="sim-count" class="text-white text-2xl font-bold mt-1">-</p>
-        </article>
-      </section>
-
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
+      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2">
         <div class="flex items-center justify-between gap-3 mb-3">
-          <h2 class="text-white font-semibold">Carte risques incendie + forets</h2>
+          <h2 class="text-white font-semibold">Carte des risques</h2>
           <p id="map-status" class="text-white/80 text-xs">Chargement...</p>
         </div>
         <div id="home-map" class="w-full rounded-xl overflow-hidden border border-white/20" style="height: 300px"></div>

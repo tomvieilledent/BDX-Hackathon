@@ -93,34 +93,6 @@ async function loadHome() {
 	const root = qs('home-content');
 	if (!root) return;
 
-	const { lat, lon } = getCoords();
-	qs('coord-value').textContent = `${lat.toFixed(3)}, ${lon.toFixed(3)}`;
-
-	try {
-		const risks = await apiGet('/api/risks');
-		qs('risk-count').textContent = String(risks.length);
-	} catch {
-		qs('risk-count').textContent = 'Erreur';
-	}
-
-	try {
-		const alerts = await apiGet(`/api/alerts/simulate?lat=${lat}&lon=${lon}&severity=mixed`);
-		qs('sim-count').textContent = String(alerts.length);
-	} catch {
-		qs('sim-count').textContent = 'Erreur';
-	}
-
-	const geolocBtn = qs('use-position');
-	if (!geolocBtn) return;
-	geolocBtn.addEventListener('click', () => {
-		if (!navigator.geolocation) return;
-		navigator.geolocation.getCurrentPosition((pos) => {
-			setCoords(pos.coords.latitude, pos.coords.longitude);
-			qs('coord-value').textContent = `${pos.coords.latitude.toFixed(3)}, ${pos.coords.longitude.toFixed(3)}`;
-			window.location.reload();
-		});
-	});
-
 	loadHomeMap();
 }
 
