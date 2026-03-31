@@ -1,7 +1,7 @@
 {
 	"risques": [
 		{
-			"type": "inondation",
+			"type": "Inondation",
 			"nom": "Inondation",
 			"icone": "💧",
 			"couleur": "#1565C0",
@@ -33,7 +33,7 @@
 			}
 		},
 		{
-			"type": "canicule",
+			"type": "Canicule",
 			"nom": "Canicule",
 			"icone": "🌡️",
 			"couleur": "#E65100",
@@ -65,7 +65,7 @@
 			}
 		},
 		{
-			"type": "industriel",
+			"type": "Industriel",
 			"nom": "Accident industriel",
 			"icone": "☢️",
 			"couleur": "#4A148C",
@@ -82,7 +82,7 @@
 				"Eau et nourriture pour 24h"
 			],
 			"checklist_pendant": [
-				"Ne pas téléphoner (libérer les lignes)",
+				"Ne pas téléphoner inutilement (libérer les lignes)",
 				"Ne pas sortir",
 				"Attendre le signal officiel de fin d'alerte"
 			],

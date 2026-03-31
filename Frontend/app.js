@@ -115,7 +115,6 @@ function renderAlerts(alerts) {
             <span class="px-2 py-1 rounded-full text-xs font-semibold ${levelClass(lvl)}">${a.niveau || '-'}</span>
           </div>
           <p class="text-white/90 mt-2">${a.message || ''}</p>
-          <p class="text-white/70 text-sm mt-2">Type: ${a.type || '-'}</p>
           <p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
         </article>
       `;
@@ -160,14 +159,22 @@ async function loadPreparationPage() {
 
 	const renderRisk = async (riskType) => {
 		const risk = await apiGet(`/api/risks/${riskType}`);
-		title.textContent = risk.nom || riskType;
+		// On ne met plus le nom (ex: "Inondation") sous le sélecteur
+		if (title) title.textContent = '';
 		before.innerHTML = (risk.checklist_avant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
 		during.innerHTML = (risk.checklist_pendant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
 	};
 
 	try {
 		const risks = await apiGet('/api/risks');
-		select.innerHTML = risks.map((r) => `<option value="${r}">${r}</option>`).join('');
+		select.innerHTML = risks
+			.map((r) => {
+				const label = typeof r === 'string' && r.length
+					? r.charAt(0).toUpperCase() + r.slice(1)
+					: r;
+				return `<option value="${r}">${label}</option>`;
+			})
+			.join('');
 		if (risks.length) await renderRisk(risks[0]);
 		select.addEventListener('change', (e) => renderRisk(e.target.value));
 	} catch (e) {
