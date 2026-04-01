@@ -4,6 +4,8 @@ const DEFAULT_LON = -0.58;
 let homeMap = null;
 let homeAlertMarkersLayer = null;
 let homeNasaFiresLayer = null;
+let homeLayersControl = null; // contrôle de couches Leaflet de la home
+let homeFloodZonesLayer = null; // couche GeoJSON des zones potentiellement inondables
 
 function qs(id) {
 	return document.getElementById(id);
@@ -226,12 +228,44 @@ async function loadHomeMap() {
 
 	const status = qs('map-status');
 	const { lat, lon } = getCoords();
-	homeMap = L.map('home-map', { attributionControl: false }).setView([lat, lon], 11);
+	homeMap = L.map('home-map', {
+		attributionControl: false,
+		crs: L.CRS.EPSG3857,
+	}).setView([lat, lon], 11);
 	homeAlertMarkersLayer = L.layerGroup().addTo(homeMap);
 
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-
+	// Fond OSM nommé pour le contrôle de couches
+	const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '&copy; OpenStreetMap contributors',
 	}).addTo(homeMap);
+
+	// Contrôle de couches (on commence avec juste le fond)
+	homeLayersControl = L.control.layers({ OpenStreetMap: osm }, {}).addTo(homeMap);
+
+	// Chargement des zones potentiellement inondables depuis un GeoJSON local
+	// Fichier : Frontend/data/n_tri_bord_carte_risq_s_033.json
+	try {
+		const resp = await fetch('data/n_tri_bord_carte_risq_s_033.json');
+		if (resp.ok) {
+			const geojson = await resp.json();
+			homeFloodZonesLayer = L.geoJSON(geojson, {
+				style: () => ({
+					color: '#dc2626',      // contour rouge
+					weight: 1,
+					fillColor: '#fb923c',   // orange
+					fillOpacity: 0.45,
+				}),
+			});
+			// Ajoute la couche au contrôle pour avoir un ON/OFF "Zones inondables"
+			homeLayersControl.addOverlay(homeFloodZonesLayer, 'Zones inondables');
+			// Active par défaut pour le rendu type carte de référence
+			homeFloodZonesLayer.addTo(homeMap);
+		} else {
+			console.warn('Zones inondables GeoJSON introuvables sur la home (HTTP ' + resp.status + ').');
+		}
+	} catch (e) {
+		console.warn('Erreur lors du chargement des zones inondables GeoJSON sur la home', e);
+	}
 
 	try {
 		const data = await apiGet(`/api/map?lat=${lat}&lon=${lon}&radius=20000`);
@@ -290,11 +324,14 @@ async function loadHome() {
 	const root = qs('home-content');
 	if (!root) return;
 	const mapSection = qs('home-map-section');
-	let homeMapInitialized = false;
 
 	const demoToggle = qs('home-demo-toggle');
 	let demoMode = isDemoModeEnabled();
 	updateDemoToggleLabel(demoToggle, demoMode);
+
+	// Initialisation de la carte des risques (toujours visible, même sans alertes)
+	if (mapSection) mapSection.classList.remove('hidden');
+	await loadHomeMap();
 
 	// Fetch alerts and show alert tiles if any
 	const alertsSection = qs('alerts-home-section');
@@ -331,11 +368,7 @@ async function loadHome() {
 				];
 			}
 			if (alerts.length) {
-				if (mapSection) mapSection.classList.remove('hidden');
-				if (!homeMapInitialized) {
-					await loadHomeMap();
-					homeMapInitialized = true;
-				}
+				// On affiche les pings sur la carte si des alertes existent
 				renderAlertPingsOnMap(alerts);
 				alertsSection.classList.remove('hidden');
 				alertsContainer.innerHTML = alerts.map(a => {
@@ -354,13 +387,13 @@ async function loadHome() {
 				       `;
 				}).join('');
 			} else {
-				if (mapSection) mapSection.classList.add('hidden');
+				// Pas d'alertes : on vide simplement la liste, la carte reste visible
 				renderAlertPingsOnMap([]);
 				alertsSection.classList.add('hidden');
 				alertsContainer.innerHTML = '';
 			}
 		} catch (e) {
-			if (mapSection) mapSection.classList.add('hidden');
+			// En cas d'erreur API, on masque juste les alertes, la carte reste
 			renderAlertPingsOnMap([]);
 			alertsSection.classList.add('hidden');
 			alertsContainer.innerHTML = '';
@@ -664,7 +697,10 @@ async function loadAlertsMap() {
 	const map = L.map('alerts-map', { attributionControl: false }).setView([lat, lon], 11);
 	const markersLayer = L.layerGroup().addTo(map);
 
-	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(map);
+	// Fond OSM simple pour la carte des alertes (sans couche inondation)
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '&copy; OpenStreetMap contributors',
+	}).addTo(map);
 
 	// Permet de "pin pointer" un signalement sur la carte avec l'icône adaptée
 	const typeSelect = qs('mode');
