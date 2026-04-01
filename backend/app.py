@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import json
 import random
+import math
 
 try:
     # Imports relatifs quand le module est chargé comme package (backend.app)
@@ -125,6 +126,77 @@ def get_risk_details(risk_type):
     return jsonify({"error": "Risk not found"}), 404
 
 
+def _safe_float(value):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _coords_from_mapping(obj):
+    if not isinstance(obj, dict):
+        return None
+
+    lat = _safe_float(obj.get("lat") or obj.get("latitude") or obj.get("y"))
+    lon = _safe_float(
+        obj.get("lon") or obj.get("lng") or obj.get(
+            "longitude") or obj.get("x")
+    )
+    if lat is not None and lon is not None and math.isfinite(lat) and math.isfinite(lon):
+        return {"lat": lat, "lon": lon}
+
+    coords = obj.get("coordinates")
+    if isinstance(coords, (list, tuple)) and len(coords) >= 2:
+        lon2 = _safe_float(coords[0])
+        lat2 = _safe_float(coords[1])
+        if lat2 is not None and lon2 is not None and math.isfinite(lat2) and math.isfinite(lon2):
+            return {"lat": lat2, "lon": lon2}
+
+    for key in [
+        "geometry",
+        "geom",
+        "geometrie",
+        "coordonnees",
+        "location",
+        "position",
+        "point",
+        "center",
+        "centre",
+    ]:
+        nested = obj.get(key)
+        nested_coords = _coords_from_mapping(nested)
+        if nested_coords:
+            return nested_coords
+
+    return None
+
+
+def extract_alert_location(payload, default_lat, default_lon, max_depth=4):
+    """Find first valid lat/lon in nested API payload, fallback to requested point."""
+    if max_depth < 0:
+        return {"lat": default_lat, "lon": default_lon}
+
+    if isinstance(payload, dict):
+        direct = _coords_from_mapping(payload)
+        if direct:
+            return direct
+
+        for value in payload.values():
+            found = extract_alert_location(
+                value, default_lat, default_lon, max_depth - 1)
+            if found["lat"] != default_lat or found["lon"] != default_lon:
+                return found
+
+    elif isinstance(payload, list):
+        for item in payload:
+            found = extract_alert_location(
+                item, default_lat, default_lon, max_depth - 1)
+            if found["lat"] != default_lat or found["lon"] != default_lon:
+                return found
+
+    return {"lat": default_lat, "lon": default_lon}
+
+
 def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
     """
     Generate alerts by combining Géorisques and Météo France data.
@@ -171,6 +243,8 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                         statut_seveso = (
                             inst.get("statutSeveso") or "").strip()
                         if statut_seveso and statut_seveso.lower() != "non seveso":
+                            alert_location = extract_alert_location(
+                                inst, lat, lon)
                             alerts.append({
                                 "id": alert_id,
                                 "type": risk_type,
@@ -185,7 +259,7 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                                 "couleur": risk_info.get("couleur"),
                                 "numero_urgence": risk_info.get("numero_urgence"),
                                 "consignes_urgence": risk_info.get("consignes_urgence"),
-                                "location": {"lat": lat, "lon": lon}
+                                "location": alert_location,
                             })
                             alert_id += 1
                 except Exception as e:
@@ -197,6 +271,8 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                     flood_risks = georisques_data.get(
                         "risks", {}).get("floods", {})
                     if flood_risks.get("at_risk") or flood_risks.get("level"):
+                        alert_location = extract_alert_location(
+                            flood_risks, lat, lon)
                         alerts.append({
                             "id": alert_id,
                             "type": risk_type,
@@ -207,7 +283,7 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
                             "couleur": risk_info.get("couleur"),
                             "numero_urgence": risk_info.get("numero_urgence"),
                             "consignes_urgence": risk_info.get("consignes_urgence"),
-                            "location": {"lat": lat, "lon": lon}
+                            "location": alert_location,
                         })
                         alert_id += 1
                 except Exception as e:
@@ -352,6 +428,13 @@ def simulate_alerts():
     num_alerts = random.randint(2, min(3, len(risk_types)))
     selected_risks = risk_types[:num_alerts]
 
+    # Demo positions around Bordeaux center by risk type (lat, lon)
+    demo_points_by_risk = {
+        "Industriel": (44.8563, -0.5364),
+        "Inondation": (44.8374, -0.5668),
+        "Canicule": (44.8292, -0.6051),
+    }
+
     for risk_type in selected_risks:
         risk_info = mock_risks.get(risk_type)
         if not risk_info:
@@ -383,6 +466,13 @@ def simulate_alerts():
         else:
             message = f"Alerte simulée {risk_info.get('nom')} - Niveau {niveau}"
 
+        # Build a simulated location per risk type with a tiny random jitter
+        base_point = demo_points_by_risk.get(risk_type, (lat, lon))
+        jitter_lat = random.uniform(-0.002, 0.002)
+        jitter_lon = random.uniform(-0.002, 0.002)
+        sim_lat = round(base_point[0] + jitter_lat, 6)
+        sim_lon = round(base_point[1] + jitter_lon, 6)
+
         # Build alert object
         alert = {
             "id": alert_id,
@@ -394,7 +484,7 @@ def simulate_alerts():
             "couleur": risk_info.get("couleur"),
             "numero_urgence": risk_info.get("numero_urgence"),
             "consignes_urgence": risk_info.get("consignes_urgence", []),
-            "location": {"lat": lat, "lon": lon}
+            "location": {"lat": sim_lat, "lon": sim_lon}
         }
         if risk_type == 'canicule':
             alert["temperature"] = simulated_temp
