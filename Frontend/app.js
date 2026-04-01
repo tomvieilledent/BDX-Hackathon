@@ -671,6 +671,13 @@ async function loadAlertsMap() {
 	map.on('click', (e) => {
 		const currentType = typeSelect ? typeSelect.value : '';
 		const visual = riskPingVisual(currentType);
+		const timestamp = new Date().toLocaleString('fr-FR', {
+			year: 'numeric',
+			month: '2-digit',
+			day: '2-digit',
+			hour: '2-digit',
+			minute: '2-digit',
+		});
 		const marker = L.marker(e.latlng, {
 			icon: L.divIcon({
 				className: '',
@@ -679,7 +686,13 @@ async function loadAlertsMap() {
 				iconAnchor: [18, 18],
 			}),
 		});
-		marker.addTo(markersLayer).bindPopup(`<strong>Signalement</strong><br/>Type: ${currentType || 'Non renseigné'}`);
+		marker
+			.addTo(markersLayer)
+			.bindPopup(``
+				+ `<strong>Signalement</strong><br/>`
+				+ `Type: ${currentType || 'Non renseigné'}<br/>`
+				+ `<span style="font-size: 0.8rem; color: #e5e7eb;">${timestamp}</span>`
+			);
 	});
 
 	try {
