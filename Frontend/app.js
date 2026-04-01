@@ -870,13 +870,13 @@ async function loadGeorisquesResultsPage() {
 
 	const statusBadge = (status) => {
 		const normalized = normalizeRiskKey(status);
-		if (normalized.includes('pas de risque') || normalized.includes('faible')) {
+		if (normalized.includes('niveau 1') || normalized.includes('faible') || normalized.includes('pas de risque')) {
 			return { label: status, className: 'status-green' };
 		}
-		if (normalized.includes('potentiel') || normalized.includes('a verifier')) {
+		if (normalized.includes('niveau 2') || normalized.includes('modere') || normalized.includes('a verifier')) {
 			return { label: status, className: 'status-amber' };
 		}
-		if (normalized.includes('existant') || normalized.includes('fort') || normalized.includes('eleve')) {
+		if (normalized.includes('niveau 3') || normalized.includes('important') || normalized.includes('fort') || normalized.includes('eleve')) {
 			return { label: status, className: 'status-red' };
 		}
 		return { label: status, className: 'status-gray' };
@@ -966,11 +966,16 @@ async function loadGeorisquesResultsPage() {
 			grouped.get(label).push(detail);
 		});
 
+		const LEVEL_1 = 'Niveau 1 - Faible';
+		const LEVEL_2 = 'Niveau 2 - Modere';
+		const LEVEL_3 = 'Niveau 3 - Eleve';
+		const LEVEL_UNKNOWN = 'Niveau ? - Donnees manquantes';
+
 		const radonClass = (Array.isArray(radon?.data) && radon.data[0]) ? String(radon.data[0].classe_potentiel || '') : '';
 		const radonStatusByClass = {
-			'1': 'FAIBLE',
-			'2': 'MODERE',
-			'3': 'IMPORTANT',
+			'1': LEVEL_1,
+			'2': LEVEL_2,
+			'3': LEVEL_3,
 		};
 		const radonAddressStatus = radonStatusByClass[radonClass] || 'INCONNU';
 
@@ -981,32 +986,50 @@ async function loadGeorisquesResultsPage() {
 				const zoneRaw = detail?.zone_sismicite;
 				const zone = Number(zoneRaw);
 				if (!Number.isFinite(zone)) continue;
-				if (zone <= 1) return 'FAIBLE';
-				if (zone === 2 || zone === 3) return 'MODERE';
-				return 'IMPORTANT';
+				if (zone <= 1) return LEVEL_1;
+				if (zone === 2 || zone === 3) return LEVEL_2;
+				return LEVEL_3;
 			}
 			return null;
 		};
 
 		const seismeStatusFromZone = extractSeismicZone();
 
+		const hasGasparGroup = (title) => grouped.has(title) && grouped.get(title).length > 0;
+
 		const normalizeCardStatus = (title) => {
 			if (title === 'RADON') {
+				if (radon?.error) {
+					return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+				}
+
+				if (hasGasparGroup('RADON') && radonAddressStatus === 'INCONNU') {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+
 				return {
-					addressStatus: radonAddressStatus,
-					cityStatus: radonAddressStatus,
+					addressStatus: radonAddressStatus === 'INCONNU' ? LEVEL_UNKNOWN : radonAddressStatus,
+					cityStatus: radonAddressStatus === 'INCONNU' ? LEVEL_UNKNOWN : radonAddressStatus,
 				};
 			}
 
 			if (title === 'INONDATION') {
+				const hasCommuneFloodSignal = hasGasparGroup('INONDATION') || hasPprData || hasCatnatData;
+				const hasLocalFloodSignal = hasFloodData && (floods?.at_risk === true || Number(floods?.results || 0) > 0);
+
+				if (hasLocalFloodSignal) {
+					return { addressStatus: LEVEL_3, cityStatus: LEVEL_2 };
+				}
+
 				if (hasFloodData) {
-					const status = floods?.at_risk ? 'EXISTANT' : 'PAS DE RISQUE CONNU';
-					return { addressStatus: status, cityStatus: status };
+					return { addressStatus: LEVEL_1, cityStatus: hasCommuneFloodSignal ? LEVEL_2 : LEVEL_1 };
 				}
-				if (hasCatnatData || hasPprData) {
-					return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+
+				if (hasCommuneFloodSignal) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
 				}
-				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
 			}
 
 			if (title === 'SEISME') {
@@ -1014,22 +1037,35 @@ async function loadGeorisquesResultsPage() {
 					return { addressStatus: seismeStatusFromZone, cityStatus: seismeStatusFromZone };
 				}
 				if (hasSeismicData) {
-					return { addressStatus: 'MODERE', cityStatus: 'MODERE' };
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
 				}
-				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+				if (hasGasparGroup('SEISME')) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
 			}
 
 			if (title === 'MOUVEMENTS DE TERRAIN') {
 				if (hasCavitesData || hasPprData || hasCatnatData || hasInstallations) {
-					return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
 				}
-				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+				if (!cavites?.error && !ppr?.error && !catnat?.error) {
+					return { addressStatus: LEVEL_1, cityStatus: LEVEL_1 };
+				}
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
 			}
 
-			return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+			if (hasGasparGroup(title) || hasInstallations) {
+				return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+			}
+
+			return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
 		};
 
-		const riskCards = [...grouped.keys()].map((title) => {
+		const baseRiskTitles = ['INONDATION', 'SEISME', 'MOUVEMENTS DE TERRAIN', 'RADON'];
+		const allRiskTitles = [...new Set([...baseRiskTitles, ...grouped.keys()])];
+
+		const riskCards = allRiskTitles.map((title) => {
 			const statuses = normalizeCardStatus(title);
 
 			return {

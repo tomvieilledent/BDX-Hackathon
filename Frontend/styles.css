@@ -1,8 +1,12 @@
 :root {
-  --veille-1: #00aeef; /* Bleu Cyan (Accent) */
-  --veille-2: #f9a11b; /* Orange Ambré (Boutons / Alerte) */
-  --veille-3: #004b7a; /* Bleu Royal (Cartes / Cards) */
-  --veille-4: #001d3d; /* Bleu Nuit (Fond / Background) */
+  --veille-1: #00aeef;
+  /* Bleu Cyan (Accent) */
+  --veille-2: #f9a11b;
+  /* Orange Ambré (Boutons / Alerte) */
+  --veille-3: #004b7a;
+  /* Bleu Royal (Cartes / Cards) */
+  --veille-4: #001d3d;
+  /* Bleu Nuit (Fond / Background) */
   background-color: var(--veille-4);
 }
 
@@ -230,33 +234,6 @@
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 10px;
-}
-
-.results-legend {
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  border-radius: 16px;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.02);
-}
-
-.results-legend-title {
-  color: #e5e7eb;
-  font-size: 0.9rem;
-  font-weight: 600;
-}
-
-.results-legend-list {
-  margin-top: 8px;
-  display: grid;
-  gap: 7px;
-  color: #d1d5db;
-  font-size: 0.85rem;
-}
-
-.results-legend-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
 }
 
 @media (min-width: 900px) {
