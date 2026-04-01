@@ -718,7 +718,15 @@ async function loadPreparationPage() {
 		const risk = await apiGet(`/api/risks/${riskType}`);
 		// On ne met plus le nom (ex: "Inondation") sous le sélecteur
 		if (title) title.textContent = '';
-<<<<<<< HEAD
+
+		// Affiche la section lieux frais uniquement pour la canicule
+		if (coolingPlacesSection) {
+			const key = normalizeRiskKey(riskType);
+			const isCanicule = key.includes('canicule');
+			coolingPlacesSection.classList.toggle('hidden', !isCanicule);
+		}
+
+		// Checklists avec icônes adaptées à chaque ligne
 		before.innerHTML = (risk.checklist_avant || [])
 			.map((x) => {
 				const icon = checklistIconForLine(x);
@@ -741,15 +749,6 @@ async function loadPreparationPage() {
 				`;
 			})
 			.join('');
-=======
-		if (coolingPlacesSection) {
-			const key = normalizeRiskKey(riskType);
-			const isCanicule = key.includes('canicule');
-			coolingPlacesSection.classList.toggle('hidden', !isCanicule);
-		}
-		before.innerHTML = (risk.checklist_avant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
-		during.innerHTML = (risk.checklist_pendant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
->>>>>>> fe16d933785e70145194bcfdb44d1c8ae6c10a6d
 	};
 
 	try {
