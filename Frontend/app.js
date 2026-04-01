@@ -1,6 +1,8 @@
 const API_BASE = localStorage.getItem('api_base') || 'http://127.0.0.1:7000';
 const DEFAULT_LAT = 44.84;
 const DEFAULT_LON = -0.58;
+let homeMap = null;
+let homeAlertMarkersLayer = null;
 
 function qs(id) {
 	return document.getElementById(id);
@@ -64,24 +66,76 @@ function normalizeCoords(item) {
 	return null;
 }
 
+function riskPingVisual(type) {
+	const key = normalizeRiskKey(type);
+	if (key.includes('inond')) return { emoji: '🌊', className: 'ping-flood' };
+	if (key.includes('incend') || key.includes('feu')) return { emoji: '🔥', className: 'ping-fire' };
+	if (key.includes('canicule') || key.includes('chaleur')) return { emoji: '🌡️', className: 'ping-heat' };
+	if (key.includes('tempete') || key.includes('vent') || key.includes('orage')) return { emoji: '🌪️', className: 'ping-storm' };
+	if (key.includes('seisme') || key.includes('sism')) return { emoji: '🫨', className: 'ping-quake' };
+	if (key.includes('industriel') || key.includes('chim')) return { emoji: '🏭', className: 'ping-industrial' };
+	return { emoji: '⚠️', className: 'ping-default' };
+}
+
+function renderAlertPingsOnMap(alerts) {
+	if (!homeMap || typeof L === 'undefined') return;
+	if (!homeAlertMarkersLayer) {
+		homeAlertMarkersLayer = L.layerGroup().addTo(homeMap);
+	}
+	homeAlertMarkersLayer.clearLayers();
+
+	const alertsWithCoords = (Array.isArray(alerts) ? alerts : [])
+		.map((alert, index) => {
+			const coords = normalizeCoords(alert?.location || alert);
+			if (!coords) return null;
+			return { alert, coords, index };
+		})
+		.filter(Boolean);
+
+	alertsWithCoords.forEach(({ alert, coords, index }) => {
+		const visual = riskPingVisual(alert?.type);
+		const angle = (index * 2 * Math.PI) / Math.max(alertsWithCoords.length, 1);
+		const offset = index === 0 ? { lat: 0, lon: 0 } : {
+			lat: Math.sin(angle) * 0.003,
+			lon: Math.cos(angle) * 0.003,
+		};
+		const marker = L.marker([coords.lat + offset.lat, coords.lon + offset.lon], {
+			icon: L.divIcon({
+				className: '',
+				html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
+				iconSize: [36, 36],
+				iconAnchor: [18, 18],
+			}),
+		});
+
+		const title = alert?.titre || 'Alerte';
+		const type = alert?.type || '-';
+		const level = alert?.niveau || '-';
+		const message = alert?.message || '';
+		marker.bindPopup(`<strong>${title}</strong><br/>Type: ${type}<br/>Niveau: ${level}<br/>${message}`);
+		marker.addTo(homeAlertMarkersLayer);
+	});
+}
+
 async function loadHomeMap() {
 	const mapEl = qs('home-map');
 	if (!mapEl || typeof L === 'undefined') return;
 
 	const status = qs('map-status');
 	const { lat, lon } = getCoords();
-	const map = L.map('home-map').setView([lat, lon], 11);
+	homeMap = L.map('home-map', { attributionControl: false }).setView([lat, lon], 11);
+	homeAlertMarkersLayer = L.layerGroup().addTo(homeMap);
 
 	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-		attribution: '&copy; OpenStreetMap',
-	}).addTo(map);
+
+	}).addTo(homeMap);
 
 	try {
 		const data = await apiGet(`/api/map?lat=${lat}&lon=${lon}&radius=20000`);
 		const center = data.center || { lat, lon };
 		const radius = Number(data.radius || 20000);
 
-		map.setView([center.lat, center.lon], 11);
+		homeMap.setView([center.lat, center.lon], 11);
 
 		L.circle([center.lat, center.lon], {
 			radius,
@@ -89,10 +143,10 @@ async function loadHomeMap() {
 			weight: 2,
 			fillColor: '#38bdf8',
 			fillOpacity: 0.12,
-		}).addTo(map);
+		}).addTo(homeMap);
 
 		L.marker([center.lat, center.lon])
-			.addTo(map)
+			.addTo(homeMap)
 			.bindPopup('Centre de recherche');
 
 		const incendies = Array.isArray(data.incendies) ? data.incendies : [];
@@ -103,7 +157,7 @@ async function loadHomeMap() {
 			markerCount += 1;
 			const name = site.raisonSociale || 'Site industriel';
 			L.marker([coords.lat, coords.lon])
-				.addTo(map)
+				.addTo(homeMap)
 				.bindPopup(`🔥 ${name}`);
 		});
 
@@ -120,7 +174,7 @@ async function loadHome() {
 	const root = qs('home-content');
 	if (!root) return;
 
-	loadHomeMap();
+	await loadHomeMap();
 
 	const demoToggle = qs('home-demo-toggle');
 	let demoMode = isDemoModeEnabled();
@@ -140,6 +194,7 @@ async function loadHome() {
 			const data = await apiGet(path);
 			const fetchedAlerts = Array.isArray(data) ? data : [];
 			const alerts = demoMode ? fetchedAlerts.slice(0, 1) : fetchedAlerts;
+			renderAlertPingsOnMap(alerts);
 			if (alerts.length) {
 				alertsSection.classList.remove('hidden');
 				alertsContainer.innerHTML = alerts.map(a => {
@@ -162,6 +217,7 @@ async function loadHome() {
 				alertsContainer.innerHTML = '';
 			}
 		} catch (e) {
+			renderAlertPingsOnMap([]);
 			alertsSection.classList.add('hidden');
 			alertsContainer.innerHTML = '';
 		}

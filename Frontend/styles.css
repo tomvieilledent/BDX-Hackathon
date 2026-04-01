@@ -13,6 +13,7 @@
   font-family:
     'Anton', 'Futura', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
 }
+
 .font-futura {
   font-family: 'Futura', 'Trebuchet MS', 'Helvetica Neue', Arial, sans-serif;
 }
@@ -21,15 +22,19 @@
 .text-veille-1 {
   color: var(--veille-1) !important;
 }
+
 .bg-veille-1 {
   background-color: var(--veille-1) !important;
 }
+
 .border-veille-1 {
   border-color: var(--veille-1) !important;
 }
+
 .fill-veille-1 {
   fill: var(--veille-1) !important;
 }
+
 .stroke-veille-1 {
   stroke: var(--veille-1) !important;
 }
@@ -38,15 +43,19 @@
 .text-veille-2 {
   color: var(--veille-2) !important;
 }
+
 .bg-veille-2 {
   background-color: var(--veille-2) !important;
 }
+
 .border-veille-2 {
   border-color: var(--veille-2) !important;
 }
+
 .fill-veille-2 {
   fill: var(--veille-2) !important;
 }
+
 .stroke-veille-2 {
   stroke: var(--veille-2) !important;
 }
@@ -55,15 +64,19 @@
 .text-veille-3 {
   color: var(--veille-3) !important;
 }
+
 .bg-veille-3 {
   background-color: var(--veille-3) !important;
 }
+
 .border-veille-3 {
   border-color: var(--veille-3) !important;
 }
+
 .fill-veille-3 {
   fill: var(--veille-3) !important;
 }
+
 .stroke-veille-3 {
   stroke: var(--veille-3) !important;
 }
@@ -72,15 +85,19 @@
 .text-veille-4 {
   color: var(--veille-4) !important;
 }
+
 .bg-veille-4 {
   background-color: var(--veille-4) !important;
 }
+
 .border-veille-4 {
   border-color: var(--veille-4) !important;
 }
+
 .fill-veille-4 {
   fill: var(--veille-4) !important;
 }
+
 .stroke-veille-4 {
   stroke: var(--veille-4) !important;
 }
@@ -90,4 +107,65 @@
    use `.title.font-anton` in HTML when necessary */
 .title.font-anton {
   font-family: 'Anton', 'Futura', sans-serif;
+}
+
+/* Hide Leaflet attribution/overlays in the bottom-right corner of the home map */
+#home-map .leaflet-bottom.leaflet-right {
+  display: none;
+}
+
+/* Alert pings on home map */
+.risk-ping {
+  width: 36px;
+  height: 36px;
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.45);
+  animation: riskPingPulse 1.8s ease-out infinite;
+}
+
+@keyframes riskPingPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.5);
+  }
+
+  70% {
+    box-shadow: 0 0 0 14px rgba(255, 255, 255, 0);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 255, 255, 0);
+  }
+}
+
+.risk-ping.ping-flood {
+  background: #0ea5e9;
+}
+
+.risk-ping.ping-fire {
+  background: #dc2626;
+}
+
+.risk-ping.ping-heat {
+  background: #ea580c;
+}
+
+.risk-ping.ping-storm {
+  background: #4f46e5;
+}
+
+.risk-ping.ping-quake {
+  background: #92400e;
+}
+
+.risk-ping.ping-industrial {
+  background: #7c3aed;
+}
+
+.risk-ping.ping-default {
+  background: #475569;
 }
