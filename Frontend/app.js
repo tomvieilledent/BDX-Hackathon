@@ -656,10 +656,58 @@ function renderAlerts(alerts) {
 		.join('');
 }
 
+async function loadAlertsMap() {
+	const mapEl = qs('alerts-map');
+	if (!mapEl || typeof L === 'undefined') return;
+
+	const { lat, lon } = getCoords();
+	const map = L.map('alerts-map', { attributionControl: false }).setView([lat, lon], 11);
+	const markersLayer = L.layerGroup().addTo(map);
+
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {}).addTo(map);
+
+	// Permet de "pin pointer" un signalement sur la carte avec l'icône adaptée
+	const typeSelect = qs('mode');
+	map.on('click', (e) => {
+		const currentType = typeSelect ? typeSelect.value : '';
+		const visual = riskPingVisual(currentType);
+		const marker = L.marker(e.latlng, {
+			icon: L.divIcon({
+				className: '',
+				html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
+				iconSize: [36, 36],
+				iconAnchor: [18, 18],
+			}),
+		});
+		marker.addTo(markersLayer).bindPopup(`<strong>Signalement</strong><br/>Type: ${currentType || 'Non renseigné'}`);
+	});
+
+	try {
+		const data = await apiGet(`/api/map?lat=${lat}&lon=${lon}&radius=20000`);
+		const center = data.center || { lat, lon };
+		const radius = Number(data.radius || 20000);
+
+		map.setView([center.lat, center.lon], 11);
+
+		L.circle([center.lat, center.lon], {
+			radius,
+			color: '#0ea5e9',
+			weight: 2,
+			fillColor: '#38bdf8',
+			fillOpacity: 0.12,
+		}).addTo(map);
+	} catch (e) {
+		// En cas d'erreur, on laisse simplement la carte centrée sur la position
+	}
+}
+
 async function loadAlertsPage() {
 	if (!qs('alerts-container')) return;
 	const mode = qs('mode'); // Type : Incendie / Inondation
 	const refresh = qs('refresh-alerts');
+
+	// Initialise la carte dédiée à la page d'alertes
+	loadAlertsMap();
 
 	const update = async () => {
 		const { lat, lon } = getCoords();
