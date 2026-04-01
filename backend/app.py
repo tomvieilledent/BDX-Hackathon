@@ -907,5 +907,58 @@ def get_map_data():
     )
 
 
+@app.route('/api/reverse-geocode', methods=['GET'])
+def reverse_geocode():
+    """Retourne une adresse ou un quartier à partir de lat/lon.
+
+    Utilise l'API publique api-adresse.data.gouv.fr pour faire du reverse geocoding.
+
+    Query params :
+      - lat, lon (obligatoires)
+    """
+
+    lat = request.args.get('lat', type=float)
+    lon = request.args.get('lon', type=float)
+    if lat is None or lon is None:
+        return jsonify({"error": "lat and lon are required"}), 400
+
+    try:
+        url = "https://api-adresse.data.gouv.fr/reverse/"
+        params = {"lat": lat, "lon": lon}
+        resp = requests.get(url, params=params, timeout=5)
+        resp.raise_for_status()
+        data = resp.json() or {}
+
+        features = data.get("features") or []
+        if not features:
+            return jsonify({
+                "label": None,
+                "city": None,
+                "postcode": None,
+                "district": None,
+            })
+
+        props = features[0].get("properties", {})
+        label = props.get("label")
+        city = props.get("city")
+        postcode = props.get("postcode")
+        district = props.get("city_district") or props.get("name")
+
+        return jsonify({
+            "label": label,
+            "city": city,
+            "postcode": postcode,
+            "district": district,
+        })
+    except Exception as e:
+        print(f"Error in reverse_geocode: {e}")
+        return jsonify({
+            "label": None,
+            "city": None,
+            "postcode": None,
+            "district": None,
+        }), 502
+
+
 if __name__ == '__main__':
     app.run(debug=True, port=7000)
