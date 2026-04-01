@@ -659,7 +659,6 @@ function renderAlerts(alerts) {
 async function loadAlertsPage() {
 	if (!qs('alerts-container')) return;
 	const mode = qs('mode'); // Type : Incendie / Inondation
-	const severity = qs('severity'); // Sévérité : faible / modere / critique
 	const refresh = qs('refresh-alerts');
 
 	const update = async () => {
@@ -681,27 +680,16 @@ async function loadAlertsPage() {
 				});
 			}
 
-			// Filtre par sévérité (faible / modere / critique)
-			const sev = (severity.value || '').toLowerCase();
-			if (sev) {
-				alerts = alerts.filter((a) => {
-					const lvl = (a.niveau || '').toLowerCase();
-					if (sev === 'faible') return lvl === 'faible' || lvl === 'modéré' || lvl === 'modere';
-					if (sev === 'modere') return lvl === 'modéré' || lvl === 'modere' || lvl === 'élevé' || lvl === 'eleve';
-					if (sev === 'critique') return lvl === 'critique';
-					return true;
-				});
-			}
-
 			renderAlerts(alerts);
 		} catch (e) {
-			qs('alerts-container').innerHTML = `<p class="text-red-300">Erreur: ${e.message}</p>`;
+			// Si l'API n'est pas disponible (backend arrêté, réseau, etc.),
+			// on affiche simplement qu'aucune alerte n'est disponible au lieu du message technique "Failed to fetch".
+			qs('alerts-container').innerHTML = '<p class="text-white/80">Aucune alerte disponible pour le moment.</p>';
 		}
 	};
 
 	refresh.addEventListener('click', update);
 	mode.addEventListener('change', update);
-	severity.addEventListener('change', update);
 	update();
 }
 
