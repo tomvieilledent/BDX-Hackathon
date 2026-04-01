@@ -1,119 +1,85 @@
 <!doctype html>
 <html lang="fr">
-  <head>
-    <title>Resultats risques</title>
-    <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
-    />
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
-    />
-    <link rel="stylesheet" href="styles.css" />
-  </head>
 
-  <body>
-    <header>
-      <div
-        class="header fixed top-0 left-0 w-full h-20 bg-veille-4 z-50 flex items-center justify-center gap-x-3"
-      >
-        <!-- Logo -->
-        <div class="flex items-center justify-center">
-          <img src="images/logo.png" alt="Logo" class="logo-img h-12" />
-        </div>
-        <!-- Phario -->
-        <div
-          class="bg-veille-3 rounded-xl px-4 py-2 flex items-center justify-center"
-        >
-          <img src="images/phario.png" alt="Phario" class="logo-img h-10" />
-        </div>
-      </div>
-    </header>
+<head>
+	<title>Resultats risques</title>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+	<script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+	<link rel="stylesheet" href="styles.css" />
+</head>
 
-    <main class="min-h-screen pt-20 pb-24 bg-veille-4">
-      <div class="container mx-auto px-4" id="results-root">
-        <section
-          class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2"
-        >
-          <div class="flex items-center justify-end mb-2">
-          <a href="index.html" class="results-back-home-btn inline-flex items-center gap-2" aria-label="Retour à l'accueil">
-            <i class="fa-solid fa-arrow-left"></i>
-            Retour a l'accueil
-          </a>
-          </div>
-          <h1 class="text-white text-xl font-anton">Resultats des risques</h1>
-          <p id="results-address" class="text-white/90 mt-2"></p>
-          <p id="results-coords" class="text-white/70 text-sm"></p>
-        </section>
+<body>
+	<header>
+		<div class="header fixed top-0 left-0 w-full h-20 bg-veille-4 z-50 flex items-center justify-center gap-x-3">
+			<!-- Logo -->
+			<div class="flex items-center justify-center">
+				<img src="images/logo.png" alt="Logo" class="logo-img h-12" />
+			</div>
+			<!-- Phario -->
+			<div class="bg-veille-3 rounded-xl px-4 py-2 flex items-center justify-center">
+				<img src="images/phario.png" alt="Phario" class="logo-img h-10" />
+			</div>
+		</div>
+	</header>
 
-        <section
-          class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4"
-        >
-          <h2 class="text-white font-semibold">Risques a proximité</h2>
-          <p id="results-summary" class="text-white/80 text-sm mt-1"></p>
-          <div id="results-cards" class="risk-cards-grid mt-4"></div>
-          <div id="results-details" class="mt-4 text-white/80 text-sm"></div>
-        </section>
-        </div>
-      </main>
+	<main class="min-h-screen pt-20 pb-24 bg-veille-4">
+		<div class="container mx-auto px-4" id="results-root">
+			<section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2">
+				<div class="flex items-center justify-end mb-2">
+					<a href="index.html" class="results-back-home-btn inline-flex items-center gap-2"
+						aria-label="Retour à l'accueil">
+						<i class="fa-solid fa-arrow-left"></i>
+						Retour a l'accueil
+					</a>
+				</div>
+				<h1 class="text-white text-xl font-anton">Resultats des risques</h1>
+				<p id="results-address" class="text-white/90 mt-2"></p>
+				<p id="results-coords" class="text-white/70 text-sm"></p>
+			</section>
 
-    <footer>
-      <!-- Navbar -->
-      <div
-        class="fixed bottom-0 left-0 w-full flex justify-center items-center h-20"
-      >
-        <div class="navbar-font bg bg-veille-4 mb-2 mx-4">
-          <ul
-            class="navbar bg-veille-3 flex items-center justify-center rounded-2xl"
-          >
-            <li
-              class="navbar-home w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
-            >
-              <a
-                href="index.html"
-                class="block w-full h-full flex items-center justify-center"
-              >
-                <i class="fa-solid fa-house text-xl text-white"></i>
-              </a>
-            </li>
-            <li
-              class="navbar-preparation w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
-            >
-              <a
-                href="preparation.html"
-                class="block w-full h-full flex items-center justify-center"
-              >
-                <i class="fa-solid fa-shield text-xl text-white"></i>
-              </a>
-            </li>
-            <li
-              class="navbar-alert w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
-            >
-              <a
-                href="alert.html"
-                class="block w-full h-full flex items-center justify-center"
-              >
-                <i class="fa-solid fa-bell text-xl text-white"></i>
-              </a>
-            </li>
-            <li
-              class="navbar-emergency w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
-            >
-              <a
-                href="emergency.html"
-                class="block w-full h-full flex items-center justify-center"
-              >
-                <i class="fa-solid fa-phone text-xl text-white"></i>
-              </a>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </footer>
+			<section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
+				<h2 class="text-white font-semibold">Risques a proximité</h2>
+				<p id="results-summary" class="text-white/80 text-sm mt-1"></p>
+				<div id="results-cards" class="risk-cards-grid mt-4"></div>
+				<div id="results-details" class="mt-4 text-white/80 text-sm"></div>
+			</section>
+		</div>
+	</main>
 
-    <script src="app.js"></script>
-  </body>
+	<footer>
+		<!-- Navbar -->
+		<div class="fixed bottom-0 left-0 w-full flex justify-center items-center h-20">
+			<div class="navbar-font bg bg-veille-4 mb-2 mx-4">
+				<ul class="navbar bg-veille-3 flex items-center justify-center rounded-2xl">
+					<li class="navbar-home w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
+						<a href="index.html" class="block w-full h-full flex items-center justify-center">
+							<i class="fa-solid fa-house text-xl text-white"></i>
+						</a>
+					</li>
+					<li
+						class="navbar-preparation w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
+						<a href="preparation.html" class="block w-full h-full flex items-center justify-center">
+							<i class="fa-solid fa-shield text-xl text-white"></i>
+						</a>
+					</li>
+					<li class="navbar-alert w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
+						<a href="alert.html" class="block w-full h-full flex items-center justify-center">
+							<i class="fa-solid fa-bell text-xl text-white"></i>
+						</a>
+					</li>
+					<li class="navbar-emergency w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
+						<a href="emergency.html" class="block w-full h-full flex items-center justify-center">
+							<i class="fa-solid fa-phone text-xl text-white"></i>
+						</a>
+					</li>
+				</ul>
+			</div>
+		</div>
+	</footer>
+
+	<script src="app.js"></script>
+</body>
+
 </html>
