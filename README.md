@@ -215,7 +215,7 @@ python -m http.server 8000
 ## Statistiques du Projet
 
 - **Duration** : Hackathon (5 days)
-- **Team** : 3 developers (Holberton School - Promotion 1A)
+- **Team** : 3 developers (Holberton School - C28)
 - **Stack** : Flask, HTML/CSS, JavaScript
 - **Pages** : 5 pages principales
 - **Services** : 3+ APIs externes intégrées
