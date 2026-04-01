@@ -3,6 +3,7 @@ const DEFAULT_LAT = 44.84;
 const DEFAULT_LON = -0.58;
 let homeMap = null;
 let homeAlertMarkersLayer = null;
+let homeNasaFiresLayer = null;
 
 function qs(id) {
 	return document.getElementById(id);
@@ -64,6 +65,67 @@ function normalizeCoords(item) {
 		return { lat, lon };
 	}
 	return null;
+}
+
+function clearDemoNasaFires() {
+	if (homeNasaFiresLayer) {
+		homeNasaFiresLayer.clearLayers();
+	}
+}
+
+async function addDemoNasaFiresToMap(center) {
+	if (!homeMap || typeof L === 'undefined') return;
+	if (!homeNasaFiresLayer) {
+		homeNasaFiresLayer = L.layerGroup().addTo(homeMap);
+	}
+	homeNasaFiresLayer.clearLayers();
+
+	// 1) Essayer de récupérer les feux réels via l'API backend NASA FIRMS
+	let fires = [];
+	try {
+		const nasa = await apiGet(
+			`/api/fires/nasa?lat=${center.lat}&lon=${center.lon}&radius_km=50&days=1`,
+		);
+		fires = Array.isArray(nasa.fires) ? nasa.fires : [];
+	} catch (e) {
+		// En cas d'erreur, on passera à la simulation ci-dessous
+	}
+
+	// 2) Si aucun feu réel, on génère 2 à 4 feux simulés autour du centre
+	if (!fires.length) {
+		const count = 2 + Math.floor(Math.random() * 3); // 2 à 4 feux
+		fires = Array.from({ length: count }).map(() => {
+			const dLat = (Math.random() - 0.5) * 0.1; // ~quelques km
+			const dLon = (Math.random() - 0.5) * 0.1;
+			return {
+				latitude: center.lat + dLat,
+				longitude: center.lon + dLon,
+				_simulated: true,
+			};
+		});
+	}
+
+	if (!fires.length) return;
+
+	const fireIcon = L.divIcon({
+		html: '<div style="background: #ef4444; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid white; box-shadow: 0 2px 8px rgba(0,0,0,0.35);">🔥</div>',
+		className: '',
+		iconSize: [24, 24],
+		iconAnchor: [12, 12],
+	});
+
+	fires.forEach((fire) => {
+		const lat = Number(fire.latitude);
+		const lon = Number(fire.longitude);
+		if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+
+		const isSimulated = Boolean(fire._simulated);
+		const popup = isSimulated
+			? '🔥 Incendie simulé'
+			: `🔥 Feu détecté (NASA FIRMS)<br/>Lat: ${lat.toFixed(3)}, Lon: ${lon.toFixed(3)}`;
+
+		L.marker([lat, lon], { icon: fireIcon }).addTo(homeNasaFiresLayer).bindPopup(popup);
+	});
 }
 
 function riskPingVisual(type) {
@@ -161,7 +223,20 @@ async function loadHomeMap() {
 				.bindPopup(`🔥 ${name}`);
 		});
 
-		// Remove incendies and forests counter from status
+		// En mode démo, ajouter aussi des feux NASA FIRMS (réels si dispo, sinon simulés)
+		if (isDemoModeEnabled()) {
+			// On ne montre pas systématiquement des incendies en démo :
+			// par exemple ~60% de chances d'afficher des feux.
+			if (Math.random() < 0.6) {
+				await addDemoNasaFiresToMap(center);
+			} else {
+				clearDemoNasaFires();
+			}
+		} else {
+			clearDemoNasaFires();
+		}
+
+		// Statut discret
 		if (status) {
 			status.textContent = '';
 		}
@@ -193,7 +268,27 @@ async function loadHome() {
 				: `/api/alerts?lat=${lat}&lon=${lon}`;
 			const data = await apiGet(path);
 			const fetchedAlerts = Array.isArray(data) ? data : [];
-			const alerts = demoMode ? fetchedAlerts.slice(0, 1) : fetchedAlerts;
+			let alerts = fetchedAlerts;
+
+			// En mode démo, on enlève les incidents "Incendie" simulés
+			// pour ne garder qu'une seule tuile personnalisée "Alerte Incendie".
+			if (demoMode) {
+				const filtered = fetchedAlerts.filter((a) => {
+					const key = normalizeRiskKey(a?.type);
+					return !(key.includes('incend') || key.includes('feu'));
+				});
+				alerts = [
+					{
+						type: 'Incendie',
+						titre: 'Alerte Incendie',
+						message: 'Alerte simulée Incendie - Niveau critique',
+						niveau: 'critique',
+						numero_urgence: '18',
+						icone: '🔥',
+					},
+					...filtered,
+				];
+			}
 			renderAlertPingsOnMap(alerts);
 			if (alerts.length) {
 				alertsSection.classList.remove('hidden');
@@ -228,6 +323,15 @@ async function loadHome() {
 			demoMode = !demoMode;
 			setDemoModeEnabled(demoMode);
 			updateDemoToggleLabel(demoToggle, demoMode);
+			// Mettre à jour la couche de feux NASA en même temps que le mode démo
+			if (homeMap) {
+				const center = homeMap.getCenter();
+				if (demoMode) {
+					await addDemoNasaFiresToMap({ lat: center.lat, lon: center.lng });
+				} else {
+					clearDemoNasaFires();
+				}
+			}
 			await refreshHomeAlerts();
 		});
 	}
@@ -354,8 +458,12 @@ async function loadPreparationPage() {
 		const risk = await apiGet(`/api/risks/${riskType}`);
 		// On ne met plus le nom (ex: "Inondation") sous le sélecteur
 		if (title) title.textContent = '';
-		before.innerHTML = (risk.checklist_avant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
-		during.innerHTML = (risk.checklist_pendant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
+		before.innerHTML = (risk.checklist_avant || [])
+			.map((x) => `<li class="text-white/90">- ${x}</li>`)
+			.join('');
+		during.innerHTML = (risk.checklist_pendant || [])
+			.map((x) => `<li class="text-white/90">- ${x}</li>`)
+			.join('');
 	};
 
 	try {
