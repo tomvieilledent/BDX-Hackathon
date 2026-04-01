@@ -775,7 +775,7 @@ def get_georisques():
 
 
 def geocode_address(address):
-    """Geocode a postal address using api-adresse.data.gouv.fr."""
+    """Geocode an address using BAN and return first match metadata."""
     try:
         resp = requests.get(
             "https://api-adresse.data.gouv.fr/search/",
@@ -792,20 +792,17 @@ def geocode_address(address):
         return {"error": "Address not found"}
 
     first = features[0] if isinstance(features[0], dict) else {}
+    properties = first.get("properties", {}) if isinstance(first, dict) else {}
     geometry = first.get("geometry", {}) if isinstance(first, dict) else {}
     coordinates = geometry.get(
         "coordinates", []) if isinstance(geometry, dict) else []
-    properties = first.get("properties", {}) if isinstance(first, dict) else {}
 
     if not isinstance(coordinates, list) or len(coordinates) < 2:
         return {"error": "Geocoder did not return valid coordinates"}
 
-    lon = coordinates[0]
-    lat = coordinates[1]
-
     try:
-        lon = float(lon)
-        lat = float(lat)
+        lon = float(coordinates[0])
+        lat = float(coordinates[1])
     except (TypeError, ValueError):
         return {"error": "Geocoder coordinates are invalid"}
 
@@ -907,9 +904,91 @@ def get_georisques_report_url():
     return jsonify({"success": True, "url": report_url, "geocoding": geocoded})
 
 
+def get_gaspar_risks_by_insee(code_insee, radius=1000, page=1, page_size=100):
+    """Fetch GASPAR risks for a commune by INSEE code."""
+    if not code_insee:
+        return {"results": 0, "data": []}
+
+    url = "https://www.georisques.gouv.fr/api/v1/gaspar/risques"
+    params = {
+        "rayon": radius,
+        "code_insee": code_insee,
+        "page": page,
+        "page_size": page_size,
+    }
+
+    try:
+        resp = requests.get(url, params=params, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, dict) else {"results": 0, "data": []}
+    except requests.RequestException as e:
+        return {"error": f"GASPAR request failed: {e}", "results": 0, "data": []}
+
+
+def get_radon_by_insee(code_insee):
+    """Fetch radon potential class for a commune by INSEE code."""
+    if not code_insee:
+        return {"results": 0, "data": []}
+
+    url = "https://www.georisques.gouv.fr/api/v1/radon"
+    try:
+        resp = requests.get(url, params={"code_insee": code_insee}, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, dict) else {"results": 0, "data": []}
+    except requests.RequestException as e:
+        return {"error": f"Radon request failed: {e}", "results": 0, "data": []}
+
+
+def get_cavites_by_insee(code_insee):
+    """Fetch cavity risk records by commune INSEE code."""
+    if not code_insee:
+        return {"results": 0, "data": []}
+
+    url = "https://www.georisques.gouv.fr/api/v1/cavites"
+    try:
+        resp = requests.get(url, params={"code_insee": code_insee}, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, dict) else {"results": 0, "data": []}
+    except requests.RequestException as e:
+        return {"error": f"Cavites request failed: {e}", "results": 0, "data": []}
+
+
+def get_ppr_by_insee(code_insee):
+    """Fetch PPR records by commune INSEE code."""
+    if not code_insee:
+        return {"results": 0, "data": []}
+
+    url = "https://www.georisques.gouv.fr/api/v1/ppr"
+    try:
+        resp = requests.get(url, params={"code_insee": code_insee}, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, dict) else {"results": 0, "data": []}
+    except requests.RequestException as e:
+        return {"error": f"PPR request failed: {e}", "results": 0, "data": []}
+
+
+def get_catnat_by_insee(code_insee):
+    """Fetch CATNAT records by commune INSEE code."""
+    if not code_insee:
+        return {"results": 0, "data": []}
+
+    url = "https://www.georisques.gouv.fr/api/v1/gaspar/catnat"
+    try:
+        resp = requests.get(url, params={"code_insee": code_insee}, timeout=12)
+        resp.raise_for_status()
+        payload = resp.json()
+        return payload if isinstance(payload, dict) else {"results": 0, "data": []}
+    except requests.RequestException as e:
+        return {"error": f"CATNAT request failed: {e}", "results": 0, "data": []}
+
+
 @app.route('/api/georisques/by-address', methods=['GET'])
 def get_georisques_by_address():
-    """Geocode an address and return Géorisques data for that location."""
+    """Geocode an address and return Géorisques data for this location."""
     address = (request.args.get('address') or '').strip()
     radius = request.args.get('radius', default=10000, type=int)
 
@@ -923,6 +1002,11 @@ def get_georisques_by_address():
     risks_data = georisques_service.get_risks_by_coordinates(
         geocoded["lat"], geocoded["lon"], radius
     )
+    gaspar_data = get_gaspar_risks_by_insee(geocoded.get("citycode"))
+    radon_data = get_radon_by_insee(geocoded.get("citycode"))
+    cavites_data = get_cavites_by_insee(geocoded.get("citycode"))
+    ppr_data = get_ppr_by_insee(geocoded.get("citycode"))
+    catnat_data = get_catnat_by_insee(geocoded.get("citycode"))
 
     return jsonify(
         {
@@ -931,6 +1015,11 @@ def get_georisques_by_address():
             "geocoding": geocoded,
             "radius": radius,
             "georisques": risks_data,
+            "gaspar": gaspar_data,
+            "radon": radon_data,
+            "cavites": cavites_data,
+            "ppr": ppr_data,
+            "catnat": catnat_data,
         }
     )
 

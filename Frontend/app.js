@@ -861,6 +861,219 @@ async function loadEmergencyPage() {
 	}
 }
 
+function loadAddressRiskSearch() {
+	const form = qs('address-risk-form');
+	const input = qs('address-input');
+	if (!form || !input) return;
+
+	form.addEventListener('submit', (event) => {
+		event.preventDefault();
+		const address = String(input.value || '').trim();
+		if (!address) return;
+		window.location.href = `resultats.html?address=${encodeURIComponent(address)}`;
+	});
+}
+
+async function loadGeorisquesResultsPage() {
+	const root = qs('results-root');
+	if (!root) return;
+	const cardsEl = qs('results-cards');
+	if (!cardsEl) return;
+
+	const params = new URLSearchParams(window.location.search);
+	const address = String(params.get('address') || '').trim();
+	if (!address) {
+		cardsEl.innerHTML = '<p class="text-red-300">Aucune adresse fournie.</p>';
+		return;
+	}
+
+	const statusBadge = (status) => {
+		const normalized = normalizeRiskKey(status);
+		if (normalized.includes('pas de risque') || normalized.includes('faible')) {
+			return { label: status, className: 'status-green' };
+		}
+		if (normalized.includes('potentiel') || normalized.includes('a verifier')) {
+			return { label: status, className: 'status-amber' };
+		}
+		if (normalized.includes('existant') || normalized.includes('fort') || normalized.includes('eleve')) {
+			return { label: status, className: 'status-red' };
+		}
+		return { label: status, className: 'status-gray' };
+	};
+
+	const iconByRiskName = (riskName) => {
+		const key = normalizeRiskKey(riskName);
+		if (key.includes('inond')) return '<i class="fa-solid fa-water"></i>';
+		if (key.includes('nappe')) return '<i class="fa-solid fa-droplet"></i>';
+		if (key.includes('seisme')) return '<i class="fa-solid fa-house-crack"></i>';
+		if (key.includes('mouvement') || key.includes('terrain') || key.includes('tassement') || key.includes('affaissement')) return '<i class="fa-solid fa-mountain"></i>';
+		if (key.includes('radon')) return '<i class="fa-solid fa-circle-radiation"></i>';
+		if (key.includes('feu') || key.includes('incend')) return '<i class="fa-solid fa-fire"></i>';
+		if (key.includes('avalanche')) return '<i class="fa-solid fa-snowflake"></i>';
+		return '<i class="fa-solid fa-triangle-exclamation"></i>';
+	};
+
+	const riskCardHtml = (risk) => {
+		const addressBadge = statusBadge(risk.addressStatus);
+		const cityBadge = statusBadge(risk.cityStatus);
+		return `
+			<article class="risk-card">
+				<div class="risk-card-header">
+					<div class="risk-icon" aria-hidden="true">${risk.iconHtml}</div>
+					<h3 class="risk-title text-2xl">${risk.title}</h3>
+				</div>
+				<div class="risk-lines">
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-location-dot"></i> à mon adresse :</span>
+						<span class="risk-status ${addressBadge.className}">${addressBadge.label}</span>
+					</div>
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-building"></i> sur ma commune :</span>
+						<span class="risk-status ${cityBadge.className}">${cityBadge.label}</span>
+					</div>
+				</div>
+				<a class="risk-link" href="https://www.georisques.gouv.fr/" target="_blank" rel="noopener noreferrer">
+					Accéder aux informations détaillées
+					<i class="fa-solid fa-arrow-right"></i>
+				</a>
+			</article>
+		`;
+	};
+
+	cardsEl.innerHTML = '<p class="text-white/80">Chargement…</p>';
+
+	try {
+		const data = await apiGet(`/api/georisques/by-address?address=${encodeURIComponent(address)}`);
+		const georisques = data.georisques || {};
+		const gaspar = data.gaspar || {};
+		const radon = data.radon || {};
+		const cavites = data.cavites || {};
+		const ppr = data.ppr || {};
+		const catnat = data.catnat || {};
+		const risks = georisques.risks || {};
+		const installations = risks.installations?.data;
+		const floods = risks.floods;
+		const seismic = risks.seismic;
+
+		const hasInstallations = Array.isArray(installations) && installations.length > 0;
+		const hasFloodData = floods && !floods.error;
+		const hasSeismicData = seismic && !seismic.error;
+		const hasCavitesData = Number(cavites?.results || 0) > 0;
+		const hasPprData = Number(ppr?.results || 0) > 0;
+		const hasCatnatData = Number(catnat?.results || 0) > 0;
+
+		const gasparDetails = Array.isArray(gaspar?.data)
+			? (gaspar.data[0]?.risques_detail || [])
+			: [];
+
+		const groupLabel = (libelle) => {
+			const key = normalizeRiskKey(libelle);
+			if (key.includes('inond')) return 'INONDATION';
+			if (key.includes('nappe')) return 'REMONTEE DE NAPPE';
+			if (key.includes('mouvement') || key.includes('terrain') || key.includes('tassement') || key.includes('affaissement')) return 'MOUVEMENTS DE TERRAIN';
+			if (key.includes('seisme')) return 'SEISME';
+			if (key.includes('radon')) return 'RADON';
+			if (key.includes('feu') || key.includes('incend')) return 'FEUX DE FORET';
+			if (key.includes('avalanche')) return 'AVALANCHE';
+			return String(libelle || 'RISQUE').toUpperCase();
+		};
+
+		const grouped = new Map();
+		gasparDetails.forEach((detail) => {
+			const label = groupLabel(detail?.libelle_risque_long);
+			if (!grouped.has(label)) grouped.set(label, []);
+			grouped.get(label).push(detail);
+		});
+
+		const radonClass = (Array.isArray(radon?.data) && radon.data[0]) ? String(radon.data[0].classe_potentiel || '') : '';
+		const radonStatusByClass = {
+			'1': 'FAIBLE',
+			'2': 'MODERE',
+			'3': 'IMPORTANT',
+		};
+		const radonAddressStatus = radonStatusByClass[radonClass] || 'INCONNU';
+
+		const extractSeismicZone = () => {
+			for (const detail of gasparDetails) {
+				const label = groupLabel(detail?.libelle_risque_long);
+				if (label !== 'SEISME') continue;
+				const zoneRaw = detail?.zone_sismicite;
+				const zone = Number(zoneRaw);
+				if (!Number.isFinite(zone)) continue;
+				if (zone <= 1) return 'FAIBLE';
+				if (zone === 2 || zone === 3) return 'MODERE';
+				return 'IMPORTANT';
+			}
+			return null;
+		};
+
+		const seismeStatusFromZone = extractSeismicZone();
+
+		const normalizeCardStatus = (title) => {
+			if (title === 'RADON') {
+				return {
+					addressStatus: radonAddressStatus,
+					cityStatus: radonAddressStatus,
+				};
+			}
+
+			if (title === 'INONDATION') {
+				if (hasFloodData) {
+					const status = floods?.at_risk ? 'EXISTANT' : 'PAS DE RISQUE CONNU';
+					return { addressStatus: status, cityStatus: status };
+				}
+				if (hasCatnatData || hasPprData) {
+					return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+				}
+				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+			}
+
+			if (title === 'SEISME') {
+				if (seismeStatusFromZone) {
+					return { addressStatus: seismeStatusFromZone, cityStatus: seismeStatusFromZone };
+				}
+				if (hasSeismicData) {
+					return { addressStatus: 'MODERE', cityStatus: 'MODERE' };
+				}
+				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+			}
+
+			if (title === 'MOUVEMENTS DE TERRAIN') {
+				if (hasCavitesData || hasPprData || hasCatnatData || hasInstallations) {
+					return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+				}
+				return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+			}
+
+			return { addressStatus: 'POTENTIEL', cityStatus: 'EXISTANT' };
+		};
+
+		const riskCards = [...grouped.keys()].map((title) => {
+			const statuses = normalizeCardStatus(title);
+
+			return {
+				title,
+				iconHtml: iconByRiskName(title),
+				addressStatus: statuses.addressStatus,
+				cityStatus: statuses.cityStatus,
+			};
+		});
+
+		if (!riskCards.length) {
+			riskCards.push({
+				title: 'AUCUN RISQUE IDENTIFIE',
+				iconHtml: iconByRiskName('risque'),
+				addressStatus: 'PAS DE RISQUE CONNU',
+				cityStatus: 'PAS DE RISQUE CONNU',
+			});
+		}
+
+		cardsEl.innerHTML = riskCards.map(riskCardHtml).join('');
+	} catch (e) {
+		cardsEl.innerHTML = `<p class="text-red-300">Erreur: ${e.message}</p>`;
+	}
+}
+
 document.addEventListener('DOMContentLoaded', () => {
 	loadHome();
 	loadAddressRiskSearch();
