@@ -473,63 +473,6 @@ async function loadHome() {
 	}
 }
 
-function loadAddressRiskSearch() {
-	const form = qs('address-risk-form');
-	const input = qs('address-input');
-	const suggestions = qs('address-suggestions');
-	if (!form || !input) return;
-
-	let debounceTimer = null;
-	let requestToken = 0;
-
-	const renderSuggestions = (items) => {
-		if (!suggestions) return;
-		suggestions.innerHTML = (items || [])
-			.map((item) => {
-				const label = String(item?.label || '').trim();
-				if (!label) return '';
-				return `<option value="${label}"></option>`;
-			})
-			.filter(Boolean)
-			.join('');
-	};
-
-	input.addEventListener('input', () => {
-		const q = String(input.value || '').trim();
-		if (debounceTimer) clearTimeout(debounceTimer);
-
-		if (q.length < 3) {
-			renderSuggestions([]);
-			return;
-		}
-
-		debounceTimer = setTimeout(async () => {
-			requestToken += 1;
-			const currentToken = requestToken;
-			try {
-				const data = await apiGet(`/api/geocode/suggest?q=${encodeURIComponent(q)}&limit=6`);
-				if (currentToken !== requestToken) return;
-				renderSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
-			} catch (e) {
-				renderSuggestions([]);
-			}
-		}, 220);
-	});
-
-	form.addEventListener('submit', async (event) => {
-		event.preventDefault();
-		const address = String(input.value || '').trim();
-		if (!address) return;
-		try {
-			const data = await apiGet(`/api/georisques/report-url?address=${encodeURIComponent(address)}`);
-			if (!data?.url) throw new Error('URL Georisques introuvable');
-			window.location.href = data.url;
-		} catch (e) {
-			alert(`Impossible d'ouvrir Georisques: ${e.message}`);
-		}
-	});
-}
-
 async function loadGeorisquesResultsPage() {
 	const root = qs('results-root');
 	if (!root) return;
@@ -661,9 +604,10 @@ async function loadGeorisquesResultsPage() {
 	}
 }
 
-function renderAlerts(alerts) {
+function renderAlerts(alerts, options = {}) {
 	const container = qs('alerts-container');
 	if (!container) return;
+	const deletable = Boolean(options.deletable);
 
 	if (!alerts.length) {
 		container.innerHTML = '<p class="text-white/80">Aucune alerte.</p>';
@@ -673,6 +617,9 @@ function renderAlerts(alerts) {
 	container.innerHTML = alerts
 		.map((a) => {
 			const lvl = (a.niveau || '').toLowerCase();
+			const deleteButton = deletable
+				? `<button type="button" class="alert-delete-btn px-2 py-1 rounded-lg bg-red-700/80 hover:bg-red-700 text-white text-xs font-semibold" data-alert-id="${a.id || ''}">Supprimer</button>`
+				: '';
 			return `
         <article class="rounded-2xl bg-veille-3 p-4 border border-white/10">
           <div class="flex items-center justify-between gap-2">
@@ -680,11 +627,33 @@ function renderAlerts(alerts) {
             <span class="px-2 py-1 rounded-full text-xs font-semibold ${levelClass(lvl)}">${a.niveau || '-'}</span>
           </div>
           <p class="text-white/90 mt-2">${a.message || ''}</p>
-          <p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
+					<div class="mt-2 flex items-center justify-between gap-2">
+						<p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
+						${deleteButton}
+					</div>
         </article>
       `;
 		})
 		.join('');
+}
+
+function createMarkerOnMap(markersLayer, lat, lon, type) {
+	const visual = riskPingVisual(type);
+	const marker = L.marker([lat, lon], {
+		icon: L.divIcon({
+			className: '',
+			html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
+			iconSize: [36, 36],
+			iconAnchor: [18, 18],
+		}),
+	});
+	marker
+		.addTo(markersLayer)
+		.bindPopup(''
+			+ `<strong>Signalement</strong><br/>`
+			+ `Type: ${type || 'Non renseigné'}<br/>`
+		);
+	return marker;
 }
 
 async function loadAlertsMap() {
@@ -700,11 +669,19 @@ async function loadAlertsMap() {
 		attribution: '&copy; OpenStreetMap contributors',
 	}).addTo(map);
 
+	// Restaure les marqueurs depuis localStorage pour les alertes persistantes
+	const savedAlerts = JSON.parse(localStorage.getItem('bdx-hackathon-alerts') || '[]');
+	savedAlerts.forEach((alert) => {
+		if (alert.lat && alert.lon) {
+			createMarkerOnMap(markersLayer, alert.lat, alert.lon, alert.type);
+		}
+	});
+
 	// Permet de "pin pointer" un signalement sur la carte avec l'icône adaptée
 	const typeSelect = qs('mode');
 	map.on('click', (e) => {
 		const currentType = typeSelect ? typeSelect.value : '';
-		const visual = riskPingVisual(currentType);
+		const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const timestamp = new Date().toLocaleString('fr-FR', {
 			year: 'numeric',
 			month: '2-digit',
@@ -712,21 +689,18 @@ async function loadAlertsMap() {
 			hour: '2-digit',
 			minute: '2-digit',
 		});
-		const marker = L.marker(e.latlng, {
-			icon: L.divIcon({
-				className: '',
-				html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
-				iconSize: [36, 36],
-				iconAnchor: [18, 18],
-			}),
-		});
-		marker
-			.addTo(markersLayer)
-			.bindPopup(``
-				+ `<strong>Signalement</strong><br/>`
-				+ `Type: ${currentType || 'Non renseigné'}<br/>`
-				+ `<span style="font-size: 0.8rem; color: #e5e7eb;">${timestamp}</span>`
-			);
+		const marker = createMarkerOnMap(markersLayer, e.latlng.lat, e.latlng.lng, currentType);
+
+		document.dispatchEvent(new CustomEvent('alert-ping-created', {
+			detail: {
+				id: pingId,
+				type: currentType || 'Incident',
+				timestamp,
+				lat: e.latlng.lat,
+				lon: e.latlng.lng,
+				marker,
+			},
+		}));
 	});
 
 	try {
@@ -752,40 +726,103 @@ async function loadAlertsPage() {
 	if (!qs('alerts-container')) return;
 	const mode = qs('mode'); // Type : Incendie / Inondation
 	const refresh = qs('refresh-alerts');
+	const clearBtn = qs('clear-alerts');
+	const container = qs('alerts-container');
+
+	// Charge depuis localStorage ou initialise vide
+	const localAlerts = JSON.parse(localStorage.getItem('bdx-hackathon-alerts') || '[]');
+
+	// Fonction pour sauvegarder dans localStorage (sans le marker)
+	const saveToStorage = () => {
+		const toSave = localAlerts.map(({ marker, ...rest }) => rest);
+		localStorage.setItem('bdx-hackathon-alerts', JSON.stringify(toSave));
+	};
 
 	// Initialise la carte dédiée à la page d'alertes
 	loadAlertsMap();
 
-	const update = async () => {
-		const { lat, lon } = getCoords();
-		try {
-			// On utilise toujours l'API de simulation mais on filtre côté frontend
-			const path = `/api/alerts/simulate?lat=${lat}&lon=${lon}`;
-			const data = await apiGet(path);
-			let alerts = Array.isArray(data) ? data : [];
+	const renderFromPings = () => {
+		let alerts = [...localAlerts];
 
-			// Filtre par type (Incendie / Inondation)
-			const selectedType = normalizeRiskKey(mode.value);
-			if (selectedType) {
-				alerts = alerts.filter((a) => {
-					const key = normalizeRiskKey(a.type);
-					if (selectedType.includes('incend')) return key.includes('incend') || key.includes('feu');
-					if (selectedType.includes('inond')) return key.includes('inond');
-					return true;
-				});
-			}
-
-			renderAlerts(alerts);
-		} catch (e) {
-			// Si l'API n'est pas disponible (backend arrêté, réseau, etc.),
-			// on affiche simplement qu'aucune alerte n'est disponible au lieu du message technique "Failed to fetch".
-			qs('alerts-container').innerHTML = '<p class="text-white/80">Aucune alerte disponible pour le moment.</p>';
+		const selectedType = normalizeRiskKey(mode.value);
+		if (selectedType) {
+			alerts = alerts.filter((a) => {
+				const key = normalizeRiskKey(a.type);
+				if (selectedType.includes('incend')) return key.includes('incend') || key.includes('feu');
+				if (selectedType.includes('inond')) return key.includes('inond');
+				return true;
+			});
 		}
+
+		renderAlerts(alerts, { deletable: true });
 	};
 
-	refresh.addEventListener('click', update);
-	mode.addEventListener('change', update);
-	update();
+	if (container) {
+		container.addEventListener('click', (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const button = target.closest('.alert-delete-btn');
+			if (!button) return;
+
+			const alertId = button.getAttribute('data-alert-id');
+			if (!alertId) return;
+
+			const idx = localAlerts.findIndex((a) => a.id === alertId);
+			if (idx >= 0) {
+				const alertToDelete = localAlerts[idx];
+				if (alertToDelete?.marker && typeof alertToDelete.marker.remove === 'function') {
+					alertToDelete.marker.remove();
+				}
+				localAlerts.splice(idx, 1);
+				saveToStorage();
+				renderFromPings();
+			}
+		});
+	}
+
+	document.addEventListener('alert-ping-created', (event) => {
+		const detail = event?.detail || {};
+		const pingId = detail.id;
+		const type = String(detail.type || 'Incident');
+		const ts = String(detail.timestamp || new Date().toLocaleString('fr-FR'));
+		const marker = detail.marker;
+
+		if (!pingId) return;
+
+		localAlerts.unshift({
+			id: pingId,
+			type,
+			niveau: 'Signalement utilisateur',
+			titre: `Alerte ${type}`,
+			message: `Ping ajouté le ${ts}`,
+			numero_urgence: type.toLowerCase().includes('incend') ? '18' : '112',
+			icone: type.toLowerCase().includes('incend') ? '🔥' : '🌊',
+			lat: detail.lat,
+			lon: detail.lon,
+			marker,
+		});
+
+		saveToStorage();
+		renderFromPings();
+	});
+
+	// Bouton pour vider toutes les alertes
+	if (clearBtn) {
+		clearBtn.addEventListener('click', () => {
+			localAlerts.forEach((a) => {
+				if (a.marker && typeof a.marker.remove === 'function') {
+					a.marker.remove();
+				}
+			});
+			localAlerts.length = 0;
+			localStorage.removeItem('bdx-hackathon-alerts');
+			renderFromPings();
+		});
+	}
+
+	refresh.addEventListener('click', renderFromPings);
+	mode.addEventListener('change', renderFromPings);
+	renderFromPings();
 }
 
 async function loadPreparationPage() {
@@ -892,6 +929,293 @@ async function loadEmergencyPage() {
 			.join('');
 	} catch (e) {
 		list.innerHTML = `<li class="text-red-300">Erreur API: ${e.message}</li>`;
+	}
+}
+
+function loadAddressRiskSearch() {
+	const form = qs('address-risk-form');
+	const input = qs('address-input');
+	const suggestions = qs('address-suggestions');
+	if (!form || !input) return;
+
+	let debounceTimer = null;
+	let requestToken = 0;
+
+	const renderSuggestions = (items) => {
+		if (!suggestions) return;
+		suggestions.innerHTML = (items || [])
+			.map((item) => {
+				const label = String(item?.label || '').trim();
+				if (!label) return '';
+				return `<option value="${label}"></option>`;
+			})
+			.filter(Boolean)
+			.join('');
+	};
+
+	input.addEventListener('input', () => {
+		const q = String(input.value || '').trim();
+		if (debounceTimer) clearTimeout(debounceTimer);
+
+		if (q.length < 3) {
+			renderSuggestions([]);
+			return;
+		}
+
+		debounceTimer = setTimeout(async () => {
+			requestToken += 1;
+			const currentToken = requestToken;
+			try {
+				const data = await apiGet(`/api/geocode/suggest?q=${encodeURIComponent(q)}&limit=6`);
+				if (currentToken !== requestToken) return;
+				renderSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+			} catch (e) {
+				renderSuggestions([]);
+			}
+		}, 220);
+	});
+
+	form.addEventListener('submit', (event) => {
+		event.preventDefault();
+		const address = String(input.value || '').trim();
+		if (!address) return;
+		window.location.href = `resultats.html?address=${encodeURIComponent(address)}`;
+	});
+}
+
+async function loadGeorisquesResultsPage() {
+	const root = qs('results-root');
+	if (!root) return;
+	const cardsEl = qs('results-cards');
+	if (!cardsEl) return;
+
+	const params = new URLSearchParams(window.location.search);
+	const address = String(params.get('address') || '').trim();
+	if (!address) {
+		cardsEl.innerHTML = '<p class="text-red-300">Aucune adresse fournie.</p>';
+		return;
+	}
+
+	const statusBadge = (status) => {
+		const normalized = normalizeRiskKey(status);
+		if (normalized.includes('niveau 1') || normalized.includes('faible') || normalized.includes('pas de risque')) {
+			return { label: status, className: 'status-green' };
+		}
+		if (normalized.includes('niveau 2') || normalized.includes('modere') || normalized.includes('a verifier')) {
+			return { label: status, className: 'status-amber' };
+		}
+		if (normalized.includes('niveau 3') || normalized.includes('important') || normalized.includes('fort') || normalized.includes('eleve')) {
+			return { label: status, className: 'status-red' };
+		}
+		return { label: status, className: 'status-gray' };
+	};
+
+	const iconByRiskName = (riskName) => {
+		const key = normalizeRiskKey(riskName);
+		if (key.includes('inond')) return '<i class="fa-solid fa-water"></i>';
+		if (key.includes('nappe')) return '<i class="fa-solid fa-droplet"></i>';
+		if (key.includes('seisme')) return '<i class="fa-solid fa-house-crack"></i>';
+		if (key.includes('mouvement') || key.includes('terrain') || key.includes('tassement') || key.includes('affaissement')) return '<i class="fa-solid fa-mountain"></i>';
+		if (key.includes('radon')) return '<i class="fa-solid fa-circle-radiation"></i>';
+		if (key.includes('feu') || key.includes('incend')) return '<i class="fa-solid fa-fire"></i>';
+		if (key.includes('avalanche')) return '<i class="fa-solid fa-snowflake"></i>';
+		return '<i class="fa-solid fa-triangle-exclamation"></i>';
+	};
+
+	const riskCardHtml = (risk) => {
+		const addressBadge = statusBadge(risk.addressStatus);
+		const cityBadge = statusBadge(risk.cityStatus);
+		return `
+			<article class="risk-card">
+				<div class="risk-card-header">
+					<div class="risk-icon" aria-hidden="true">${risk.iconHtml}</div>
+					<h3 class="risk-title text-2xl">${risk.title}</h3>
+				</div>
+				<div class="risk-lines">
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-location-dot"></i> à mon adresse :</span>
+						<span class="risk-status ${addressBadge.className}">${addressBadge.label}</span>
+					</div>
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-building"></i> sur ma commune :</span>
+						<span class="risk-status ${cityBadge.className}">${cityBadge.label}</span>
+					</div>
+				</div>
+				<a class="risk-link" href="https://www.georisques.gouv.fr/" target="_blank" rel="noopener noreferrer">
+					Accéder aux informations détaillées
+					<i class="fa-solid fa-arrow-right"></i>
+				</a>
+			</article>
+		`;
+	};
+
+	cardsEl.innerHTML = '<p class="text-white/80">Chargement…</p>';
+
+	try {
+		const data = await apiGet(`/api/georisques/by-address?address=${encodeURIComponent(address)}`);
+		const georisques = data.georisques || {};
+		const gaspar = data.gaspar || {};
+		const radon = data.radon || {};
+		const cavites = data.cavites || {};
+		const ppr = data.ppr || {};
+		const catnat = data.catnat || {};
+		const risks = georisques.risks || {};
+		const installations = risks.installations?.data;
+		const floods = risks.floods;
+		const seismic = risks.seismic;
+
+		const hasInstallations = Array.isArray(installations) && installations.length > 0;
+		const hasFloodData = floods && !floods.error;
+		const hasSeismicData = seismic && !seismic.error;
+		const hasCavitesData = Number(cavites?.results || 0) > 0;
+		const hasPprData = Number(ppr?.results || 0) > 0;
+		const hasCatnatData = Number(catnat?.results || 0) > 0;
+
+		const gasparDetails = Array.isArray(gaspar?.data)
+			? (gaspar.data[0]?.risques_detail || [])
+			: [];
+
+		const groupLabel = (libelle) => {
+			const key = normalizeRiskKey(libelle);
+			if (key.includes('inond')) return 'INONDATION';
+			if (key.includes('nappe')) return 'REMONTEE DE NAPPE';
+			if (key.includes('mouvement') || key.includes('terrain') || key.includes('tassement') || key.includes('affaissement')) return 'MOUVEMENTS DE TERRAIN';
+			if (key.includes('seisme')) return 'SEISME';
+			if (key.includes('radon')) return 'RADON';
+			if (key.includes('feu') || key.includes('incend')) return 'FEUX DE FORET';
+			if (key.includes('avalanche')) return 'AVALANCHE';
+			return String(libelle || 'RISQUE').toUpperCase();
+		};
+
+		const grouped = new Map();
+		gasparDetails.forEach((detail) => {
+			const label = groupLabel(detail?.libelle_risque_long);
+			if (!grouped.has(label)) grouped.set(label, []);
+			grouped.get(label).push(detail);
+		});
+
+		const LEVEL_1 = 'Niveau 1 - Faible';
+		const LEVEL_2 = 'Niveau 2 - Modere';
+		const LEVEL_3 = 'Niveau 3 - Eleve';
+		const LEVEL_UNKNOWN = 'Niveau ? - Donnees manquantes';
+
+		const radonClass = (Array.isArray(radon?.data) && radon.data[0]) ? String(radon.data[0].classe_potentiel || '') : '';
+		const radonStatusByClass = {
+			'1': LEVEL_1,
+			'2': LEVEL_2,
+			'3': LEVEL_3,
+		};
+		const radonAddressStatus = radonStatusByClass[radonClass] || 'INCONNU';
+
+		const extractSeismicZone = () => {
+			for (const detail of gasparDetails) {
+				const label = groupLabel(detail?.libelle_risque_long);
+				if (label !== 'SEISME') continue;
+				const zoneRaw = detail?.zone_sismicite;
+				const zone = Number(zoneRaw);
+				if (!Number.isFinite(zone)) continue;
+				if (zone <= 1) return LEVEL_1;
+				if (zone === 2 || zone === 3) return LEVEL_2;
+				return LEVEL_3;
+			}
+			return null;
+		};
+
+		const seismeStatusFromZone = extractSeismicZone();
+
+		const hasGasparGroup = (title) => grouped.has(title) && grouped.get(title).length > 0;
+
+		const normalizeCardStatus = (title) => {
+			if (title === 'RADON') {
+				if (radon?.error) {
+					return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+				}
+
+				if (hasGasparGroup('RADON') && radonAddressStatus === 'INCONNU') {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+
+				return {
+					addressStatus: radonAddressStatus === 'INCONNU' ? LEVEL_UNKNOWN : radonAddressStatus,
+					cityStatus: radonAddressStatus === 'INCONNU' ? LEVEL_UNKNOWN : radonAddressStatus,
+				};
+			}
+
+			if (title === 'INONDATION') {
+				const hasCommuneFloodSignal = hasGasparGroup('INONDATION') || hasPprData || hasCatnatData;
+				const hasLocalFloodSignal = hasFloodData && (floods?.at_risk === true || Number(floods?.results || 0) > 0);
+
+				if (hasLocalFloodSignal) {
+					return { addressStatus: LEVEL_3, cityStatus: LEVEL_2 };
+				}
+
+				if (hasFloodData) {
+					return { addressStatus: LEVEL_1, cityStatus: hasCommuneFloodSignal ? LEVEL_2 : LEVEL_1 };
+				}
+
+				if (hasCommuneFloodSignal) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+			}
+
+			if (title === 'SEISME') {
+				if (seismeStatusFromZone) {
+					return { addressStatus: seismeStatusFromZone, cityStatus: seismeStatusFromZone };
+				}
+				if (hasSeismicData) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+				if (hasGasparGroup('SEISME')) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+			}
+
+			if (title === 'MOUVEMENTS DE TERRAIN') {
+				if (hasCavitesData || hasPprData || hasCatnatData || hasInstallations) {
+					return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+				}
+				if (!cavites?.error && !ppr?.error && !catnat?.error) {
+					return { addressStatus: LEVEL_1, cityStatus: LEVEL_1 };
+				}
+				return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+			}
+
+			if (hasGasparGroup(title) || hasInstallations) {
+				return { addressStatus: LEVEL_2, cityStatus: LEVEL_2 };
+			}
+
+			return { addressStatus: LEVEL_UNKNOWN, cityStatus: LEVEL_UNKNOWN };
+		};
+
+		const baseRiskTitles = ['INONDATION', 'SEISME', 'MOUVEMENTS DE TERRAIN', 'RADON'];
+		const allRiskTitles = [...new Set([...baseRiskTitles, ...grouped.keys()])];
+
+		const riskCards = allRiskTitles.map((title) => {
+			const statuses = normalizeCardStatus(title);
+
+			return {
+				title,
+				iconHtml: iconByRiskName(title),
+				addressStatus: statuses.addressStatus,
+				cityStatus: statuses.cityStatus,
+			};
+		});
+
+		if (!riskCards.length) {
+			riskCards.push({
+				title: 'AUCUN RISQUE IDENTIFIE',
+				iconHtml: iconByRiskName('risque'),
+				addressStatus: 'PAS DE RISQUE CONNU',
+				cityStatus: 'PAS DE RISQUE CONNU',
+			});
+		}
+
+		cardsEl.innerHTML = riskCards.map(riskCardHtml).join('');
+	} catch (e) {
+		cardsEl.innerHTML = `<p class="text-red-300">Erreur: ${e.message}</p>`;
 	}
 }
 

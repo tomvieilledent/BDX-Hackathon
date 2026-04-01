@@ -1,8 +1,12 @@
 :root {
-  --veille-1: #00aeef; /* Bleu Cyan (Accent) */
-  --veille-2: #f9a11b; /* Orange Ambré (Boutons / Alerte) */
-  --veille-3: #004b7a; /* Bleu Royal (Cartes / Cards) */
-  --veille-4: #001d3d; /* Bleu Nuit (Fond / Background) */
+  --veille-1: #00aeef;
+  /* Bleu Cyan (Accent) */
+  --veille-2: #f9a11b;
+  /* Orange Ambré (Boutons / Alerte) */
+  --veille-3: #004b7a;
+  /* Bleu Royal (Cartes / Cards) */
+  --veille-4: #001d3d;
+  /* Bleu Nuit (Fond / Background) */
   background-color: var(--veille-4);
 }
 
@@ -170,11 +174,66 @@
   background: #475569;
 }
 
-/* Results risk cards */
+/* Modal results page */
+.results-modal-backdrop {
+  background: radial-gradient(circle at 30% 20%, #1a1f36 0%, #0b0f18 55%, #070a10 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.results-modal-panel {
+  width: min(980px, 100%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(7, 10, 16, 0.92);
+  backdrop-filter: blur(2px);
+  padding: 24px;
+  border-radius: 28px;
+}
+
+.results-back-home-btn {
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 8px 12px;
+  text-decoration: none;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.results-back-home-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.results-modal-header {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+
+.results-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 8px 12px;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+.results-close-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+}
+
 .risk-cards-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
-  gap: 16px;
+  gap: 10px;
 }
 
 @media (min-width: 900px) {
@@ -186,37 +245,39 @@
 .risk-card {
   background: #0b121a;
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 14px;
+  padding: 10px;
+  border-radius: 24px;
 }
 
 .risk-card-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 9px;
 }
 
 .risk-icon {
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: 9999px;
-  border: 3px solid #e11d48;
+  border: 2px solid #e11d48;
   display: grid;
   place-items: center;
-  background: #0f1c66;
-  font-size: 28px;
+  background: #ffffff;
+  font-size: 20px;
+  color: #1d4ed8;
 }
 
 .risk-title {
   color: #f6f5f2;
-  font-weight: 800;
-  letter-spacing: 0.3px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  font-size: 1.45rem;
 }
 
 .risk-lines {
-  margin-top: 14px;
+  margin-top: 10px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .risk-line {
@@ -225,19 +286,20 @@
   justify-content: space-between;
   gap: 8px;
   color: #f1f5f9;
-  font-weight: 600;
+  font-weight: 300;
 }
 
 .risk-label {
   color: #d1d5db;
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 0.95rem;
 }
 
 .risk-status {
-  border-radius: 6px;
-  padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 800;
+  border-radius: 9999px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .risk-status.status-green {
@@ -255,19 +317,25 @@
   background: rgba(55, 65, 81, 0.6);
 }
 
+.risk-status.status-amber {
+  color: #facc15;
+  background: rgba(113, 63, 18, 0.45);
+}
+
 .risk-link {
-  margin-top: 14px;
+  margin-top: 10px;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   color: #8292ff;
   text-decoration: none;
   border: 1px solid rgba(130, 146, 255, 0.7);
-  border-radius: 0;
-  padding: 10px 12px;
+  padding: 8px 10px;
   width: 100%;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 400;
+  font-size: 0.95rem;
+  border-radius: 16px;
 }
 
 .risk-link:hover {
