@@ -1,90 +1,134 @@
 <!doctype html>
 <html lang="fr">
+  <head>
+    <title>Preparation</title>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
 
-<head>
-  <title>Preparation</title>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link rel="stylesheet" href="styles.css" />
-</head>
-
-<body>
-  <header>
-    <div class="header fixed top-0 left-0 w-full h-12 bg-veille-4">
-      <div class="topbar h-12 bg-veille-3 flex rounded-2xl items-center px-4 mx-4 mt-2">
-        <div class="logo w-16 h- bg-transparent rounded-">
-          <img src="images/logo.png" alt="#" />
+  <body>
+    <header>
+      <div
+        class="header fixed top-0 left-0 w-full h-20 bg-veille-4 z-50 flex items-center justify-center gap-x-3"
+      >
+        <!-- Logo -->
+        <div class="flex items-center justify-center">
+          <img src="images/logo.png" alt="Logo" class="logo-img h-12" />
         </div>
-        <div class="title-rect flex-1 h-8 bg-veille-1 rounded-xl ml-3 flex items-center justify-center px-3">
-          <p class="text-lg sm:text-2xl font-anton text-white">
-            Veille Bordeaux
-          </p>
+        <!-- Phario -->
+        <div
+          class="bg-veille-3 rounded-xl px-4 py-2 flex items-center justify-center"
+        >
+          <img src="images/phario.png" alt="Phario" class="logo-img h-10" />
         </div>
       </div>
-    </div>
-  </header>
-  <main class="min-h-screen pt-16 pb-24 bg-veille-4">
-    <div class="container mx-auto px-4">
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
-        <h1 class="text-white text-xl font-anton">Preparation</h1>
-        <label class="block text-white/90 text-sm mt-3">Type de risque
-          <select id="risk-select"
-            class="mt-1 w-full rounded-lg p-2 bg-veille-4 text-white border border-white/20"></select>
-        </label>
-        <p class="text-white text-lg font-semibold mt-3" id="risk-title">-</p>
-      </section>
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
-        <h2 class="text-white font-semibold">Dans l'immédiat</h2>
-        <ul id="during-list" class="mt-2 space-y-1"></ul>
-      </section>
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
-        <h2 class="text-white font-semibold">Checklist préparative</h2>
-        <ul id="before-list" class="mt-2 space-y-1"></ul>
-      </section>
-      <section id="cooling-places-section" class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4 hidden">
-        <h2 class="text-white font-semibold">
-          <a href="https://geo.bordeaux-metropole.fr/adws/app/33cebc9f-cd8e-11ed-ad24-9bf3b515cd35/?context=q3KX"
-            target="_blank" rel="noopener noreferrer" class="underline decoration-white/60 hover:decoration-white">
-            Lieux et équipements naturellement frais, rafraîchis ou rafraîchissants à Bordeaux Métropole
-          </a>
-        </h2>
-      </section>
-
-    </div>
-  </main>
-  <footer>
-    <!-- Navbar -->
-    <div class="fixed bottom-0 left-0 w-full">
-      <div class="navbar-font bg bg-veille-4 mb-2 mx-4">
-        <ul class="navbar bg-veille-3 flex items-center justify-center rounded-2xl">
-          <li class="navbar-home w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
-            <a href="index.html" class="block w-full h-full flex items-center justify-center">
-              <i class="fa-solid fa-house text-xl text-white"></i>
+    </header>
+    <main class="min-h-screen pt-20 pb-24 bg-veille-4">
+      <div class="container mx-auto px-4">
+        <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
+          <h1 class="text-white text-xl font-anton">Preparation</h1>
+          <label class="block text-white/90 text-sm mt-3"
+            >Type de risque
+            <select
+              id="risk-select"
+              class="mt-1 w-full rounded-lg p-2 bg-veille-4 text-white border border-white/20"
+            ></select>
+          </label>
+          <p class="text-white text-lg font-semibold mt-3" id="risk-title">-</p>
+        </section>
+        <section
+          class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4"
+        >
+          <h2 class="text-white font-semibold">Dans l'immédiat</h2>
+          <ul id="during-list" class="mt-2 space-y-1"></ul>
+        </section>
+        <section
+          class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4"
+        >
+          <h2 class="text-white font-semibold">Checklist préparative</h2>
+          <ul id="before-list" class="mt-2 space-y-1"></ul>
+        </section>
+        <section
+          id="cooling-places-section"
+          class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4 hidden"
+        >
+          <h2 class="text-white font-semibold">
+            <a
+              href="https://geo.bordeaux-metropole.fr/adws/app/33cebc9f-cd8e-11ed-ad24-9bf3b515cd35/?context=q3KX"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="underline decoration-white/60 hover:decoration-white"
+            >
+              Lieux et équipements naturellement frais, rafraîchis ou
+              rafraîchissants à Bordeaux Métropole
             </a>
-          </li>
-          <li class="navbar-preparation w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
-            aria-current="page">
-            <span class="block w-full h-full flex items-center justify-center">
-              <i class="fa-solid fa-shield text-xl text-veille-2"></i>
-            </span>
-          </li>
-          <li class="navbar-alert w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
-            <a href="alert.html" class="block w-full h-full flex items-center justify-center">
-              <i class="fa-solid fa-bell text-xl text-white"></i>
-            </a>
-          </li>
-          <li class="navbar-emergency w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5">
-            <a href="emergency.html" class="block w-full h-full flex items-center justify-center">
-              <i class="fa-solid fa-phone text-xl text-white"></i>
-            </a>
-          </li>
-        </ul>
+          </h2>
+        </section>
       </div>
-    </div>
-  </footer>
-  <script src="app.js"></script>
-</body>
-
+    </main>
+    <footer>
+      <!-- Navbar -->
+      <div
+        class="fixed bottom-0 left-0 w-full flex justify-center items-center h-20"
+      >
+        <div class="navbar-font bg bg-veille-4 mb-2 mx-4">
+          <ul
+            class="navbar bg-veille-3 flex items-center justify-center rounded-2xl"
+          >
+            <li
+              class="navbar-home w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
+            >
+              <a
+                href="index.html"
+                class="block w-full h-full flex items-center justify-center"
+              >
+                <i class="fa-solid fa-house text-xl text-white"></i>
+              </a>
+            </li>
+            <li
+              class="navbar-preparation w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
+              aria-current="page"
+            >
+              <a
+                href="preparation.html"
+                class="block w-full h-full flex items-center justify-center"
+              >
+                <i class="fa-solid fa-shield text-xl text-veille-2"></i>
+              </a>
+            </li>
+            <li
+              class="navbar-alert w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
+            >
+              <a
+                href="alert.html"
+                class="block w-full h-full flex items-center justify-center"
+              >
+                <i class="fa-solid fa-bell text-xl text-white"></i>
+              </a>
+            </li>
+            <li
+              class="navbar-emergency w-16 h-8 bg-veille-1 rounded-xl flex items-center justify-center m-1.5"
+            >
+              <a
+                href="emergency.html"
+                class="block w-full h-full flex items-center justify-center"
+              >
+                <i class="fa-solid fa-phone text-xl text-white"></i>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </footer>
+    <script src="app.js"></script>
+  </body>
 </html>
