@@ -94,6 +94,33 @@
 				"titre_alerte": "Site SEVESO à proximité",
 				"message_template": "{name} - {status}"
 			}
+		},
+		{
+			"type": "Incendie",
+			"nom": "Incendie",
+			"icone": "🔥",
+			"couleur": "#B91C1C",
+			"numero_urgence": "18",
+			"consignes_urgence": [
+				"Appeler immédiatement le 18 ou le 112",
+				"Évacuer les lieux en restant au ras du sol",
+				"Ne jamais utiliser l’ascenseur",
+				"Fermer portes et fenêtres derrière vous si possible"
+			],
+			"checklist_avant": [
+				"Installer des détecteurs de fumée et tester régulièrement",
+				"Prévoir un extincteur adapté et savoir l’utiliser",
+				"Identifier les issues de secours et chemins d’évacuation",
+				"Préparer un point de rassemblement à l’extérieur",
+				"Ranger les produits inflammables à l’écart des sources de chaleur"
+			],
+			"checklist_pendant": [
+				"Donner l’alerte et prévenir les occupants",
+				"Couper le gaz et l’électricité si cela est possible sans danger",
+				"Se diriger vers la sortie la plus proche en restant calme",
+				"Se couvrir la bouche et le nez avec un tissu humide",
+				"Ne pas revenir en arrière pour récupérer des objets"
+			]
 		}
 	],
 	"features": [
