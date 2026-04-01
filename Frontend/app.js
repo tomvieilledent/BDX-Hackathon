@@ -250,16 +250,14 @@ async function loadHomeMap() {
 			const geojson = await resp.json();
 			homeFloodZonesLayer = L.geoJSON(geojson, {
 				style: () => ({
-					color: '#dc2626',      // contour rouge
-					weight: 1,
-					fillColor: '#fb923c',   // orange
-					fillOpacity: 0.45,
+					color: 'transparent',    // pas de contour visible
+					weight: 0,
+					fillColor: '#fb923c',     // orange
+					fillOpacity: 0.18,       // beaucoup plus léger
 				}),
 			});
 			// Ajoute la couche au contrôle pour avoir un ON/OFF "Zones inondables"
 			homeLayersControl.addOverlay(homeFloodZonesLayer, 'Zones inondables');
-			// Active par défaut pour le rendu type carte de référence
-			homeFloodZonesLayer.addTo(homeMap);
 		} else {
 			console.warn('Zones inondables GeoJSON introuvables sur la home (HTTP ' + resp.status + ').');
 		}
