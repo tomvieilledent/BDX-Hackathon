@@ -169,3 +169,108 @@
 .risk-ping.ping-default {
   background: #475569;
 }
+
+/* Results risk cards */
+.risk-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (min-width: 900px) {
+  .risk-cards-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.risk-card {
+  background: #0b121a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.risk-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.risk-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 9999px;
+  border: 3px solid #e11d48;
+  display: grid;
+  place-items: center;
+  background: #0f1c66;
+  font-size: 28px;
+}
+
+.risk-title {
+  color: #f6f5f2;
+  font-weight: 800;
+  letter-spacing: 0.3px;
+}
+
+.risk-lines {
+  margin-top: 14px;
+  display: grid;
+  gap: 8px;
+}
+
+.risk-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.risk-label {
+  color: #d1d5db;
+  font-weight: 700;
+}
+
+.risk-status {
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.risk-status.status-green {
+  color: #1ad16e;
+  background: rgba(20, 83, 45, 0.45);
+}
+
+.risk-status.status-red {
+  color: #ff6b6b;
+  background: rgba(127, 29, 29, 0.45);
+}
+
+.risk-status.status-gray {
+  color: #e5e7eb;
+  background: rgba(55, 65, 81, 0.6);
+}
+
+.risk-link {
+  margin-top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #8292ff;
+  text-decoration: none;
+  border: 1px solid rgba(130, 146, 255, 0.7);
+  border-radius: 0;
+  padding: 10px 12px;
+  width: 100%;
+  justify-content: center;
+  font-weight: 700;
+}
+
+.risk-link:hover {
+  border-color: #9aa6ff;
+  color: #9aa6ff;
+}

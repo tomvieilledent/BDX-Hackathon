@@ -289,8 +289,8 @@ async function loadHomeMap() {
 async function loadHome() {
 	const root = qs('home-content');
 	if (!root) return;
-
-	await loadHomeMap();
+	const mapSection = qs('home-map-section');
+	let homeMapInitialized = false;
 
 	const demoToggle = qs('home-demo-toggle');
 	let demoMode = isDemoModeEnabled();
@@ -330,8 +330,13 @@ async function loadHome() {
 					...filtered,
 				];
 			}
-			renderAlertPingsOnMap(alerts);
 			if (alerts.length) {
+				if (mapSection) mapSection.classList.remove('hidden');
+				if (!homeMapInitialized) {
+					await loadHomeMap();
+					homeMapInitialized = true;
+				}
+				renderAlertPingsOnMap(alerts);
 				alertsSection.classList.remove('hidden');
 				alertsContainer.innerHTML = alerts.map(a => {
 					const lvl = (a.niveau || '').toLowerCase();
@@ -349,10 +354,13 @@ async function loadHome() {
 				       `;
 				}).join('');
 			} else {
+				if (mapSection) mapSection.classList.add('hidden');
+				renderAlertPingsOnMap([]);
 				alertsSection.classList.add('hidden');
 				alertsContainer.innerHTML = '';
 			}
 		} catch (e) {
+			if (mapSection) mapSection.classList.add('hidden');
 			renderAlertPingsOnMap([]);
 			alertsSection.classList.add('hidden');
 			alertsContainer.innerHTML = '';
@@ -431,6 +439,194 @@ async function loadHome() {
 		} catch (e) {
 			weatherContainer.innerHTML = '<div class="text-red-300">Erreur météo</div>';
 		}
+	}
+}
+
+function loadAddressRiskSearch() {
+	const form = qs('address-risk-form');
+	const input = qs('address-input');
+	const suggestions = qs('address-suggestions');
+	if (!form || !input) return;
+
+	let debounceTimer = null;
+	let requestToken = 0;
+
+	const renderSuggestions = (items) => {
+		if (!suggestions) return;
+		suggestions.innerHTML = (items || [])
+			.map((item) => {
+				const label = String(item?.label || '').trim();
+				if (!label) return '';
+				return `<option value="${label}"></option>`;
+			})
+			.filter(Boolean)
+			.join('');
+	};
+
+	input.addEventListener('input', () => {
+		const q = String(input.value || '').trim();
+		if (debounceTimer) clearTimeout(debounceTimer);
+
+		if (q.length < 3) {
+			renderSuggestions([]);
+			return;
+		}
+
+		debounceTimer = setTimeout(async () => {
+			requestToken += 1;
+			const currentToken = requestToken;
+			try {
+				const data = await apiGet(`/api/geocode/suggest?q=${encodeURIComponent(q)}&limit=6`);
+				if (currentToken !== requestToken) return;
+				renderSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+			} catch (e) {
+				renderSuggestions([]);
+			}
+		}, 220);
+	});
+
+	form.addEventListener('submit', async (event) => {
+		event.preventDefault();
+		const address = String(input.value || '').trim();
+		if (!address) return;
+		try {
+			const data = await apiGet(`/api/georisques/report-url?address=${encodeURIComponent(address)}`);
+			if (!data?.url) throw new Error('URL Georisques introuvable');
+			window.location.href = data.url;
+		} catch (e) {
+			alert(`Impossible d'ouvrir Georisques: ${e.message}`);
+		}
+	});
+}
+
+async function loadGeorisquesResultsPage() {
+	const root = qs('results-root');
+	if (!root) return;
+
+	const addressEl = qs('results-address');
+	const coordsEl = qs('results-coords');
+	const summaryEl = qs('results-summary');
+	const cardsEl = qs('results-cards');
+	const detailsEl = qs('results-details');
+
+	const statusBadge = (status) => {
+		const normalized = normalizeRiskKey(status);
+		if (normalized.includes('pas de risque') || normalized.includes('faible')) {
+			return { label: status, className: 'status-green' };
+		}
+		if (normalized.includes('existant') || normalized.includes('fort') || normalized.includes('eleve')) {
+			return { label: status, className: 'status-red' };
+		}
+		return { label: status, className: 'status-gray' };
+	};
+
+	const riskCardHtml = (risk) => {
+		const addressBadge = statusBadge(risk.addressStatus);
+		const cityBadge = statusBadge(risk.cityStatus);
+		return `
+			<article class="risk-card">
+				<div class="risk-card-header">
+					<div class="risk-icon" aria-hidden="true">${risk.icon}</div>
+					<h3 class="risk-title text-2xl">${risk.title}</h3>
+				</div>
+				<div class="risk-lines">
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-location-dot"></i> a mon adresse :</span>
+						<span class="risk-status ${addressBadge.className}">${addressBadge.label}</span>
+					</div>
+					<div class="risk-line">
+						<span class="risk-label"><i class="fa-solid fa-building"></i> sur ma commune :</span>
+						<span class="risk-status ${cityBadge.className}">${cityBadge.label}</span>
+					</div>
+				</div>
+				<a class="risk-link" href="https://www.georisques.gouv.fr/" target="_blank" rel="noopener noreferrer">
+					Acceder aux informations detaillees
+					<i class="fa-solid fa-arrow-right"></i>
+				</a>
+			</article>
+		`;
+	};
+
+	const params = new URLSearchParams(window.location.search);
+	const address = String(params.get('address') || '').trim();
+	if (!address) {
+		if (summaryEl) summaryEl.innerHTML = '<p class="text-red-300">Aucune adresse fournie.</p>';
+		if (cardsEl) cardsEl.innerHTML = '';
+		if (detailsEl) detailsEl.innerHTML = '';
+		return;
+	}
+
+	if (addressEl) addressEl.textContent = `Adresse recherchee: ${address}`;
+	if (summaryEl) summaryEl.textContent = 'Chargement des risques...';
+
+	try {
+		const data = await apiGet(`/api/georisques/by-address?address=${encodeURIComponent(address)}`);
+		const geocoding = data.geocoding || {};
+		const georisques = data.georisques || {};
+		const risks = georisques.risks || {};
+
+		const installations = risks.installations?.data;
+		const floods = risks.floods;
+		const seismic = risks.seismic;
+
+		const installationsCount = Array.isArray(installations) ? installations.length : 0;
+		const hasFloodData = floods && !floods.error;
+		const hasSeismicData = seismic && !seismic.error;
+
+		const riskCards = [
+			{
+				title: 'INONDATION',
+				icon: '🌊',
+				addressStatus: hasFloodData ? 'EXISTANT' : 'INCONNU',
+				cityStatus: hasFloodData ? 'EXISTANT' : 'INCONNU',
+			},
+			{
+				title: 'REMONTEE DE NAPPE',
+				icon: '💧',
+				addressStatus: hasFloodData ? 'PAS DE RISQUE CONNU' : 'INCONNU',
+				cityStatus: hasFloodData ? 'EXISTANT' : 'INCONNU',
+			},
+			{
+				title: 'SEISME',
+				icon: '🫨',
+				addressStatus: hasSeismicData ? 'FAIBLE' : 'INCONNU',
+				cityStatus: hasSeismicData ? 'FAIBLE' : 'INCONNU',
+			},
+			{
+				title: 'MOUVEMENTS DE TERRAIN',
+				icon: '⛰️',
+				addressStatus: 'INCONNU',
+				cityStatus: installationsCount > 0 ? 'EXISTANT' : 'INCONNU',
+			},
+		];
+
+		if (coordsEl) {
+			const lat = geocoding.lat;
+			const lon = geocoding.lon;
+			coordsEl.textContent = Number.isFinite(lat) && Number.isFinite(lon)
+				? `Position geocodee: ${lat.toFixed(5)}, ${lon.toFixed(5)}`
+				: '';
+		}
+
+		if (summaryEl) {
+			summaryEl.textContent = `Installations classees trouvees autour de l'adresse : ${installationsCount}`;
+		}
+
+		if (cardsEl) {
+			cardsEl.innerHTML = riskCards.map(riskCardHtml).join('');
+		}
+
+		if (detailsEl) {
+			if (!hasFloodData || !hasSeismicData) {
+				detailsEl.innerHTML = 'Certaines donnees detaillees de l\'API Georisques ne sont pas disponibles pour cette adresse (retour externe incomplet).';
+			} else {
+				detailsEl.innerHTML = '';
+			}
+		}
+	} catch (e) {
+		if (summaryEl) summaryEl.innerHTML = `<p class="text-red-300">Erreur: ${e.message}</p>`;
+		if (cardsEl) cardsEl.innerHTML = '';
+		if (detailsEl) detailsEl.innerHTML = '';
 	}
 }
 
@@ -516,11 +712,13 @@ async function loadPreparationPage() {
 	const before = qs('before-list');
 	const during = qs('during-list');
 	const title = qs('risk-title');
+	const coolingPlacesSection = qs('cooling-places-section');
 
 	const renderRisk = async (riskType) => {
 		const risk = await apiGet(`/api/risks/${riskType}`);
 		// On ne met plus le nom (ex: "Inondation") sous le sélecteur
 		if (title) title.textContent = '';
+<<<<<<< HEAD
 		before.innerHTML = (risk.checklist_avant || [])
 			.map((x) => {
 				const icon = checklistIconForLine(x);
@@ -543,6 +741,15 @@ async function loadPreparationPage() {
 				`;
 			})
 			.join('');
+=======
+		if (coolingPlacesSection) {
+			const key = normalizeRiskKey(riskType);
+			const isCanicule = key.includes('canicule');
+			coolingPlacesSection.classList.toggle('hidden', !isCanicule);
+		}
+		before.innerHTML = (risk.checklist_avant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
+		during.innerHTML = (risk.checklist_pendant || []).map((x) => `<li class="text-white/90">- ${x}</li>`).join('');
+>>>>>>> fe16d933785e70145194bcfdb44d1c8ae6c10a6d
 	};
 
 	try {
@@ -608,6 +815,8 @@ async function loadEmergencyPage() {
 
 document.addEventListener('DOMContentLoaded', () => {
 	loadHome();
+	loadAddressRiskSearch();
+	loadGeorisquesResultsPage();
 	loadAlertsPage();
 	loadPreparationPage();
 	loadEmergencyPage();

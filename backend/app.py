@@ -774,6 +774,167 @@ def get_georisques():
     return jsonify(risks_data)
 
 
+def geocode_address(address):
+    """Geocode a postal address using api-adresse.data.gouv.fr."""
+    try:
+        resp = requests.get(
+            "https://api-adresse.data.gouv.fr/search/",
+            params={"q": address, "limit": 1},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except requests.RequestException as e:
+        return {"error": f"Geocoding request failed: {e}"}
+
+    features = payload.get("features", []) if isinstance(payload, dict) else []
+    if not features:
+        return {"error": "Address not found"}
+
+    first = features[0] if isinstance(features[0], dict) else {}
+    geometry = first.get("geometry", {}) if isinstance(first, dict) else {}
+    coordinates = geometry.get(
+        "coordinates", []) if isinstance(geometry, dict) else []
+    properties = first.get("properties", {}) if isinstance(first, dict) else {}
+
+    if not isinstance(coordinates, list) or len(coordinates) < 2:
+        return {"error": "Geocoder did not return valid coordinates"}
+
+    lon = coordinates[0]
+    lat = coordinates[1]
+
+    try:
+        lon = float(lon)
+        lat = float(lat)
+    except (TypeError, ValueError):
+        return {"error": "Geocoder coordinates are invalid"}
+
+    return {
+        "lat": lat,
+        "lon": lon,
+        "label": properties.get("label") or address,
+        "city": properties.get("city"),
+        "postcode": properties.get("postcode"),
+        "citycode": properties.get("citycode"),
+        "type": properties.get("type"),
+    }
+
+
+@app.route('/api/geocode/suggest', methods=['GET'])
+def suggest_addresses():
+    """Return address suggestions while user types."""
+    query = (request.args.get('q') or '').strip()
+    limit = request.args.get('limit', default=6, type=int)
+
+    if len(query) < 3:
+        return jsonify({"success": True, "suggestions": []})
+
+    limit = max(1, min(limit, 10))
+
+    try:
+        resp = requests.get(
+            "https://api-adresse.data.gouv.fr/search/",
+            params={"q": query, "limit": limit,
+                    "autocomplete": 1, "type": "housenumber"},
+            timeout=10,
+        )
+        resp.raise_for_status()
+        payload = resp.json()
+    except requests.RequestException as e:
+        return jsonify({"error": f"Suggestion request failed: {e}"}), 502
+
+    features = payload.get("features", []) if isinstance(payload, dict) else []
+    suggestions = []
+    for feature in features:
+        if not isinstance(feature, dict):
+            continue
+        props = feature.get("properties", {}) if isinstance(
+            feature.get("properties"), dict) else {}
+        geometry = feature.get("geometry", {}) if isinstance(
+            feature.get("geometry"), dict) else {}
+        coords = geometry.get("coordinates", []) if isinstance(
+            geometry.get("coordinates"), list) else []
+        lon = coords[0] if len(coords) >= 2 else None
+        lat = coords[1] if len(coords) >= 2 else None
+
+        suggestions.append(
+            {
+                "label": props.get("label"),
+                "city": props.get("city"),
+                "postcode": props.get("postcode"),
+                "citycode": props.get("citycode"),
+                "type": props.get("type"),
+                "lat": lat,
+                "lon": lon,
+            }
+        )
+
+    return jsonify({"success": True, "suggestions": suggestions})
+
+
+def build_georisques_report_url(geocoded):
+    """Build official georisques rapport2 URL from geocoded address metadata."""
+    base_url = "https://www.georisques.gouv.fr/mes-risques/connaitre-les-risques-pres-de-chez-moi/rapport2"
+    params = {
+        "form-adresse": "true",
+        "isCadastre": "false",
+        "city": geocoded.get("city") or "",
+        "type": geocoded.get("type") or "housenumber",
+        "typeForm": "adresse",
+        "codeInsee": geocoded.get("citycode") or "",
+        "lon": geocoded.get("lon"),
+        "lat": geocoded.get("lat"),
+        "go_back": "/",
+        "propertiesType": geocoded.get("type") or "housenumber",
+        "adresse": geocoded.get("label") or "",
+    }
+    query = requests.compat.urlencode(params)
+    return f"{base_url}?{query}"
+
+
+@app.route('/api/georisques/report-url', methods=['GET'])
+def get_georisques_report_url():
+    """Geocode an address and return the official Georisques rapport2 URL."""
+    address = (request.args.get('address') or '').strip()
+    if not address:
+        return jsonify({"error": "Missing address parameter"}), 400
+
+    geocoded = geocode_address(address)
+    if geocoded.get("error"):
+        return jsonify({"error": geocoded["error"]}), 404
+
+    report_url = build_georisques_report_url(geocoded)
+    return jsonify({"success": True, "url": report_url, "geocoding": geocoded})
+
+
+@app.route('/api/georisques/by-address', methods=['GET'])
+def get_georisques_by_address():
+    """Geocode an address and return Géorisques data for that location."""
+    address = (request.args.get('address') or '').strip()
+    radius = request.args.get('radius', default=10000, type=int)
+
+    if not address:
+        return jsonify({"error": "Missing address parameter"}), 400
+
+    geocoded = geocode_address(address)
+    if geocoded.get("error"):
+        return jsonify({"error": geocoded["error"]}), 404
+
+    risks_data = georisques_service.get_risks_by_coordinates(
+        geocoded["lat"], geocoded["lon"], radius
+    )
+
+    return jsonify(
+        {
+            "success": True,
+            "query": address,
+            "geocoding": geocoded,
+            "radius": radius,
+            "georisques": risks_data,
+        }
+    )
+
+
 @app.route('/api/georisques/incendies-seveso', methods=['GET'])
 def get_fire_and_seveso_risks():
     """Retourne uniquement les installations liées à Seveso et aux risques d'incendie.
