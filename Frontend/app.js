@@ -58,6 +58,26 @@ function preparationLinkForRisk(riskType) {
 	return `preparation.html?risk=${safeType}`;
 }
 
+function checklistIconForLine(text) {
+	const t = String(text || '').toLowerCase();
+	if (!t) return '•';
+	if (t.includes('électr') || t.includes('electr')) return '⚡️';
+	if (t.includes('gaz')) return '🔥';
+	if (t.includes('eau') || t.includes('boire')) return '💧';
+	if (t.includes('médicament') || t.includes('medicament')) return '💊';
+	if (t.includes('document')) return '📄';
+	if (t.includes('radio')) return '📻';
+	if (t.includes('lampe') || t.includes('torche')) return '🔦';
+	if (t.includes('extincteur')) return '🧯';
+	if (t.includes('issue') || t.includes('évacuation') || t.includes('evacuation')) return '🚪';
+	if (t.includes('monter') || t.includes('hauteur')) return '⬆️';
+	if (t.includes('ne pas sortir')) return '🏠';
+	if (t.includes('appeler')) return '📞';
+	if (t.includes('volet') || t.includes('fenêtre') || t.includes('fenetre')) return '🪟';
+	if (t.includes('ascenseur')) return '🚫';
+	return '•';
+}
+
 function normalizeCoords(item) {
 	const lat = Number(item.lat ?? item.latitude ?? item.y ?? item.coordonnees?.lat);
 	const lon = Number(item.lon ?? item.longitude ?? item.x ?? item.coordonnees?.lon);
@@ -93,16 +113,14 @@ async function addDemoNasaFiresToMap(center) {
 
 	// 2) Si aucun feu réel, on génère 2 à 4 feux simulés autour du centre
 	if (!fires.length) {
-		const count = 2 + Math.floor(Math.random() * 3); // 2 à 4 feux
-		fires = Array.from({ length: count }).map(() => {
-			const dLat = (Math.random() - 0.5) * 0.1; // ~quelques km
-			const dLon = (Math.random() - 0.5) * 0.1;
-			return {
-				latitude: center.lat + dLat,
-				longitude: center.lon + dLon,
-				_simulated: true,
-			};
-		});
+		// Pour la démo, on ne veut qu'un seul incendie simulé sur la carte
+		const dLat = (Math.random() - 0.5) * 0.1; // ~quelques km
+		const dLon = (Math.random() - 0.5) * 0.1;
+		fires = [{
+			latitude: center.lat + dLat,
+			longitude: center.lon + dLon,
+			_simulated: true,
+		}];
 	}
 
 	if (!fires.length) return;
@@ -114,18 +132,41 @@ async function addDemoNasaFiresToMap(center) {
 		iconAnchor: [12, 12],
 	});
 
-	fires.forEach((fire) => {
-		const lat = Number(fire.latitude);
-		const lon = Number(fire.longitude);
-		if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+	// Pour éviter de multiplier les icônes, on n'affiche qu'un seul feu (le premier)
+	const fire = fires[0];
+	const lat = Number(fire.latitude);
+	const lon = Number(fire.longitude);
+	if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-		const isSimulated = Boolean(fire._simulated);
-		const popup = isSimulated
-			? '🔥 Incendie simulé'
-			: `🔥 Feu détecté (NASA FIRMS)<br/>Lat: ${lat.toFixed(3)}, Lon: ${lon.toFixed(3)}`;
+	const isSimulated = Boolean(fire._simulated);
+	let addressHtml = '';
+	try {
+		const info = await apiGet(`/api/reverse-geocode?lat=${lat}&lon=${lon}`);
+		if (info) {
+			// On privilégie l'adresse complète si disponible, sinon quartier/ville/code postal
+			if (info.label) {
+				addressHtml = `<br/>${info.label}`;
+			} else {
+				const parts = [];
+				if (info.district) parts.push(info.district);
+				if (info.postcode) parts.push(info.postcode);
+				if (info.city) parts.push(info.city);
+				if (parts.length) {
+					addressHtml = `<br/>${parts.join(' ')}`;
+				}
+			}
+		}
+	} catch (e) {
+		// En cas d'erreur, on affichera juste le texte de base
+	}
 
-		L.marker([lat, lon], { icon: fireIcon }).addTo(homeNasaFiresLayer).bindPopup(popup);
-	});
+	const popup = (isSimulated
+		? '🔥 Incendie simulé'
+		: '🔥 Feu détecté (NASA FIRMS)') + addressHtml;
+
+	L.marker([lat, lon], { icon: fireIcon })
+		.addTo(homeNasaFiresLayer)
+		.bindPopup(popup);
 }
 
 function riskPingVisual(type) {
@@ -421,20 +462,42 @@ function renderAlerts(alerts) {
 
 async function loadAlertsPage() {
 	if (!qs('alerts-container')) return;
-	const mode = qs('mode');
-	const severity = qs('severity');
-	const temp = qs('temp');
+	const mode = qs('mode'); // Type : Incendie / Inondation
+	const severity = qs('severity'); // Sévérité : faible / modere / critique
 	const refresh = qs('refresh-alerts');
 
 	const update = async () => {
 		const { lat, lon } = getCoords();
 		try {
-			const path =
-				mode.value === 'live'
-					? `/api/alerts?lat=${lat}&lon=${lon}`
-					: `/api/alerts/simulate?lat=${lat}&lon=${lon}&severity=${severity.value}${temp.value ? `&temp=${encodeURIComponent(temp.value)}` : ''}`;
+			// On utilise toujours l'API de simulation mais on filtre côté frontend
+			const path = `/api/alerts/simulate?lat=${lat}&lon=${lon}`;
 			const data = await apiGet(path);
-			renderAlerts(Array.isArray(data) ? data : []);
+			let alerts = Array.isArray(data) ? data : [];
+
+			// Filtre par type (Incendie / Inondation)
+			const selectedType = normalizeRiskKey(mode.value);
+			if (selectedType) {
+				alerts = alerts.filter((a) => {
+					const key = normalizeRiskKey(a.type);
+					if (selectedType.includes('incend')) return key.includes('incend') || key.includes('feu');
+					if (selectedType.includes('inond')) return key.includes('inond');
+					return true;
+				});
+			}
+
+			// Filtre par sévérité (faible / modere / critique)
+			const sev = (severity.value || '').toLowerCase();
+			if (sev) {
+				alerts = alerts.filter((a) => {
+					const lvl = (a.niveau || '').toLowerCase();
+					if (sev === 'faible') return lvl === 'faible' || lvl === 'modéré' || lvl === 'modere';
+					if (sev === 'modere') return lvl === 'modéré' || lvl === 'modere' || lvl === 'élevé' || lvl === 'eleve';
+					if (sev === 'critique') return lvl === 'critique';
+					return true;
+				});
+			}
+
+			renderAlerts(alerts);
 		} catch (e) {
 			qs('alerts-container').innerHTML = `<p class="text-red-300">Erreur: ${e.message}</p>`;
 		}
@@ -459,10 +522,26 @@ async function loadPreparationPage() {
 		// On ne met plus le nom (ex: "Inondation") sous le sélecteur
 		if (title) title.textContent = '';
 		before.innerHTML = (risk.checklist_avant || [])
-			.map((x) => `<li class="text-white/90">- ${x}</li>`)
+			.map((x) => {
+				const icon = checklistIconForLine(x);
+				return `
+					<li class="flex items-start gap-2 text-white/90">
+						<span class="mt-0.5">${icon}</span>
+						<span>${x}</span>
+					</li>
+				`;
+			})
 			.join('');
 		during.innerHTML = (risk.checklist_pendant || [])
-			.map((x) => `<li class="text-white/90">- ${x}</li>`)
+			.map((x) => {
+				const icon = checklistIconForLine(x);
+				return `
+					<li class="flex items-start gap-2 text-white/90">
+						<span class="mt-0.5">${icon}</span>
+						<span>${x}</span>
+					</li>
+				`;
+			})
 			.join('');
 	};
 
