@@ -442,63 +442,6 @@ async function loadHome() {
 	}
 }
 
-function loadAddressRiskSearch() {
-	const form = qs('address-risk-form');
-	const input = qs('address-input');
-	const suggestions = qs('address-suggestions');
-	if (!form || !input) return;
-
-	let debounceTimer = null;
-	let requestToken = 0;
-
-	const renderSuggestions = (items) => {
-		if (!suggestions) return;
-		suggestions.innerHTML = (items || [])
-			.map((item) => {
-				const label = String(item?.label || '').trim();
-				if (!label) return '';
-				return `<option value="${label}"></option>`;
-			})
-			.filter(Boolean)
-			.join('');
-	};
-
-	input.addEventListener('input', () => {
-		const q = String(input.value || '').trim();
-		if (debounceTimer) clearTimeout(debounceTimer);
-
-		if (q.length < 3) {
-			renderSuggestions([]);
-			return;
-		}
-
-		debounceTimer = setTimeout(async () => {
-			requestToken += 1;
-			const currentToken = requestToken;
-			try {
-				const data = await apiGet(`/api/geocode/suggest?q=${encodeURIComponent(q)}&limit=6`);
-				if (currentToken !== requestToken) return;
-				renderSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
-			} catch (e) {
-				renderSuggestions([]);
-			}
-		}, 220);
-	});
-
-	form.addEventListener('submit', async (event) => {
-		event.preventDefault();
-		const address = String(input.value || '').trim();
-		if (!address) return;
-		try {
-			const data = await apiGet(`/api/georisques/report-url?address=${encodeURIComponent(address)}`);
-			if (!data?.url) throw new Error('URL Georisques introuvable');
-			window.location.href = data.url;
-		} catch (e) {
-			alert(`Impossible d'ouvrir Georisques: ${e.message}`);
-		}
-	});
-}
-
 async function loadGeorisquesResultsPage() {
 	const root = qs('results-root');
 	if (!root) return;
@@ -864,7 +807,45 @@ async function loadEmergencyPage() {
 function loadAddressRiskSearch() {
 	const form = qs('address-risk-form');
 	const input = qs('address-input');
+	const suggestions = qs('address-suggestions');
 	if (!form || !input) return;
+
+	let debounceTimer = null;
+	let requestToken = 0;
+
+	const renderSuggestions = (items) => {
+		if (!suggestions) return;
+		suggestions.innerHTML = (items || [])
+			.map((item) => {
+				const label = String(item?.label || '').trim();
+				if (!label) return '';
+				return `<option value="${label}"></option>`;
+			})
+			.filter(Boolean)
+			.join('');
+	};
+
+	input.addEventListener('input', () => {
+		const q = String(input.value || '').trim();
+		if (debounceTimer) clearTimeout(debounceTimer);
+
+		if (q.length < 3) {
+			renderSuggestions([]);
+			return;
+		}
+
+		debounceTimer = setTimeout(async () => {
+			requestToken += 1;
+			const currentToken = requestToken;
+			try {
+				const data = await apiGet(`/api/geocode/suggest?q=${encodeURIComponent(q)}&limit=6`);
+				if (currentToken !== requestToken) return;
+				renderSuggestions(Array.isArray(data?.suggestions) ? data.suggestions : []);
+			} catch (e) {
+				renderSuggestions([]);
+			}
+		}, 220);
+	});
 
 	form.addEventListener('submit', (event) => {
 		event.preventDefault();

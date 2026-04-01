@@ -67,41 +67,6 @@ def _default_endpoint_for_source(source):
     return None
 
 
-def get_required_detection_endpoints():
-    """Return the set of endpoints declared in risques.json detection config."""
-    endpoints = set()
-    for risk_info in mock_risks.values():
-        detection = risk_info.get("detection", {})
-        endpoint = detection.get("endpoint") or _default_endpoint_for_source(
-            detection.get("source")
-        )
-        if endpoint:
-            endpoints.add(endpoint)
-    return endpoints
-
-
-def fetch_weather_data(lat, lon):
-    """Fetch current weather data using Open-Meteo aggregated endpoint.
-    Returns dict with current temperature from the aggregated forecast."""
-    try:
-        # Call our Open-Meteo endpoint to get aggregated Bordeaux region forecast
-        data = fetch_weather_multi_points(BORDEAUX_POINTS)
-
-        if data is None or len(data) == 0:
-            return None
-
-        # Extract current/first hour temperature from the first location
-        hourly_data = compute_hourly_mean(data)
-        if hourly_data and len(hourly_data) > 0:
-            # Return first hour's temperature as "current"
-            return {"temperature_mean": hourly_data[0]["temperature_mean"]}
-
-        return None
-    except Exception as e:
-        print(f"Warning: Could not fetch weather data: {e}")
-        return None
-
-
 @app.route('/')
 def index():
     return "Backend for Risk Prevention App is running!"
@@ -831,8 +796,9 @@ def suggest_addresses():
     try:
         resp = requests.get(
             "https://api-adresse.data.gouv.fr/search/",
-            params={"q": query, "limit": limit,
-                    "autocomplete": 1, "type": "housenumber"},
+            # Ne pas forcer "housenumber": les requêtes partielles (ex: nom de rue)
+            # peuvent sinon ne retourner aucun résultat.
+            params={"q": query, "limit": limit, "autocomplete": 1},
             timeout=10,
         )
         resp.raise_for_status()

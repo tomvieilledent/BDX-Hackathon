@@ -184,6 +184,24 @@
   background: rgba(7, 10, 16, 0.92);
   backdrop-filter: blur(2px);
   padding: 24px;
+  border-radius: 28px;
+}
+
+.results-back-home-btn {
+  color: #e5e7eb;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  padding: 8px 12px;
+  text-decoration: none;
+  border-radius: 9999px;
+  font-weight: 500;
+  font-size: 0.9rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+}
+
+.results-back-home-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .results-modal-header {
@@ -214,6 +232,33 @@
   gap: 10px;
 }
 
+.results-legend {
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.results-legend-title {
+  color: #e5e7eb;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.results-legend-list {
+  margin-top: 8px;
+  display: grid;
+  gap: 7px;
+  color: #d1d5db;
+  font-size: 0.85rem;
+}
+
+.results-legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 @media (min-width: 900px) {
   .risk-cards-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -224,6 +269,7 @@
   background: #0b121a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   padding: 10px;
+  border-radius: 24px;
 }
 
 .risk-card-header {
@@ -246,7 +292,7 @@
 
 .risk-title {
   color: #f6f5f2;
-  font-weight: 800;
+  font-weight: 500;
   letter-spacing: 0.2px;
   font-size: 1.45rem;
 }
@@ -263,20 +309,20 @@
   justify-content: space-between;
   gap: 8px;
   color: #f1f5f9;
-  font-weight: 600;
+  font-weight: 300;
 }
 
 .risk-label {
   color: #d1d5db;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 0.95rem;
 }
 
 .risk-status {
-  border-radius: 5px;
+  border-radius: 9999px;
   padding: 1px 7px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 500;
 }
 
 .risk-status.status-green {
@@ -310,8 +356,9 @@
   padding: 8px 10px;
   width: 100%;
   justify-content: center;
-  font-weight: 700;
+  font-weight: 400;
   font-size: 0.95rem;
+  border-radius: 16px;
 }
 
 .risk-link:hover {
