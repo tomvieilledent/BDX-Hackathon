@@ -606,9 +606,10 @@ async function loadGeorisquesResultsPage() {
 	}
 }
 
-function renderAlerts(alerts) {
+function renderAlerts(alerts, options = {}) {
 	const container = qs('alerts-container');
 	if (!container) return;
+	const deletable = Boolean(options.deletable);
 
 	if (!alerts.length) {
 		container.innerHTML = '<p class="text-white/80">Aucune alerte.</p>';
@@ -618,6 +619,9 @@ function renderAlerts(alerts) {
 	container.innerHTML = alerts
 		.map((a) => {
 			const lvl = (a.niveau || '').toLowerCase();
+			const deleteButton = deletable
+				? `<button type="button" class="alert-delete-btn px-2 py-1 rounded-lg bg-red-700/80 hover:bg-red-700 text-white text-xs font-semibold" data-alert-id="${a.id || ''}">Supprimer</button>`
+				: '';
 			return `
         <article class="rounded-2xl bg-veille-3 p-4 border border-white/10">
           <div class="flex items-center justify-between gap-2">
@@ -625,11 +629,33 @@ function renderAlerts(alerts) {
             <span class="px-2 py-1 rounded-full text-xs font-semibold ${levelClass(lvl)}">${a.niveau || '-'}</span>
           </div>
           <p class="text-white/90 mt-2">${a.message || ''}</p>
-          <p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
+					<div class="mt-2 flex items-center justify-between gap-2">
+						<p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
+						${deleteButton}
+					</div>
         </article>
       `;
 		})
 		.join('');
+}
+
+function createMarkerOnMap(markersLayer, lat, lon, type) {
+	const visual = riskPingVisual(type);
+	const marker = L.marker([lat, lon], {
+		icon: L.divIcon({
+			className: '',
+			html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
+			iconSize: [36, 36],
+			iconAnchor: [18, 18],
+		}),
+	});
+	marker
+		.addTo(markersLayer)
+		.bindPopup(''
+			+ `<strong>Signalement</strong><br/>`
+			+ `Type: ${type || 'Non renseigné'}<br/>`
+		);
+	return marker;
 }
 
 async function loadAlertsMap() {
@@ -645,11 +671,19 @@ async function loadAlertsMap() {
 		attribution: '&copy; OpenStreetMap contributors',
 	}).addTo(map);
 
+	// Restaure les marqueurs depuis localStorage pour les alertes persistantes
+	const savedAlerts = JSON.parse(localStorage.getItem('bdx-hackathon-alerts') || '[]');
+	savedAlerts.forEach((alert) => {
+		if (alert.lat && alert.lon) {
+			createMarkerOnMap(markersLayer, alert.lat, alert.lon, alert.type);
+		}
+	});
+
 	// Permet de "pin pointer" un signalement sur la carte avec l'icône adaptée
 	const typeSelect = qs('mode');
 	map.on('click', (e) => {
 		const currentType = typeSelect ? typeSelect.value : '';
-		const visual = riskPingVisual(currentType);
+		const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 		const timestamp = new Date().toLocaleString('fr-FR', {
 			year: 'numeric',
 			month: '2-digit',
@@ -657,21 +691,18 @@ async function loadAlertsMap() {
 			hour: '2-digit',
 			minute: '2-digit',
 		});
-		const marker = L.marker(e.latlng, {
-			icon: L.divIcon({
-				className: '',
-				html: `<div class="risk-ping ${visual.className}"><span>${visual.emoji}</span></div>`,
-				iconSize: [36, 36],
-				iconAnchor: [18, 18],
-			}),
-		});
-		marker
-			.addTo(markersLayer)
-			.bindPopup(``
-				+ `<strong>Signalement</strong><br/>`
-				+ `Type: ${currentType || 'Non renseigné'}<br/>`
-				+ `<span style="font-size: 0.8rem; color: #e5e7eb;">${timestamp}</span>`
-			);
+		const marker = createMarkerOnMap(markersLayer, e.latlng.lat, e.latlng.lng, currentType);
+
+		document.dispatchEvent(new CustomEvent('alert-ping-created', {
+			detail: {
+				id: pingId,
+				type: currentType || 'Incident',
+				timestamp,
+				lat: e.latlng.lat,
+				lon: e.latlng.lng,
+				marker,
+			},
+		}));
 	});
 
 	try {
@@ -697,40 +728,103 @@ async function loadAlertsPage() {
 	if (!qs('alerts-container')) return;
 	const mode = qs('mode'); // Type : Incendie / Inondation
 	const refresh = qs('refresh-alerts');
+	const clearBtn = qs('clear-alerts');
+	const container = qs('alerts-container');
+
+	// Charge depuis localStorage ou initialise vide
+	const localAlerts = JSON.parse(localStorage.getItem('bdx-hackathon-alerts') || '[]');
+
+	// Fonction pour sauvegarder dans localStorage (sans le marker)
+	const saveToStorage = () => {
+		const toSave = localAlerts.map(({ marker, ...rest }) => rest);
+		localStorage.setItem('bdx-hackathon-alerts', JSON.stringify(toSave));
+	};
 
 	// Initialise la carte dédiée à la page d'alertes
 	loadAlertsMap();
 
-	const update = async () => {
-		const { lat, lon } = getCoords();
-		try {
-			// On utilise toujours l'API de simulation mais on filtre côté frontend
-			const path = `/api/alerts/simulate?lat=${lat}&lon=${lon}`;
-			const data = await apiGet(path);
-			let alerts = Array.isArray(data) ? data : [];
+	const renderFromPings = () => {
+		let alerts = [...localAlerts];
 
-			// Filtre par type (Incendie / Inondation)
-			const selectedType = normalizeRiskKey(mode.value);
-			if (selectedType) {
-				alerts = alerts.filter((a) => {
-					const key = normalizeRiskKey(a.type);
-					if (selectedType.includes('incend')) return key.includes('incend') || key.includes('feu');
-					if (selectedType.includes('inond')) return key.includes('inond');
-					return true;
-				});
-			}
-
-			renderAlerts(alerts);
-		} catch (e) {
-			// Si l'API n'est pas disponible (backend arrêté, réseau, etc.),
-			// on affiche simplement qu'aucune alerte n'est disponible au lieu du message technique "Failed to fetch".
-			qs('alerts-container').innerHTML = '<p class="text-white/80">Aucune alerte disponible pour le moment.</p>';
+		const selectedType = normalizeRiskKey(mode.value);
+		if (selectedType) {
+			alerts = alerts.filter((a) => {
+				const key = normalizeRiskKey(a.type);
+				if (selectedType.includes('incend')) return key.includes('incend') || key.includes('feu');
+				if (selectedType.includes('inond')) return key.includes('inond');
+				return true;
+			});
 		}
+
+		renderAlerts(alerts, { deletable: true });
 	};
 
-	refresh.addEventListener('click', update);
-	mode.addEventListener('change', update);
-	update();
+	if (container) {
+		container.addEventListener('click', (event) => {
+			const target = event.target;
+			if (!(target instanceof HTMLElement)) return;
+			const button = target.closest('.alert-delete-btn');
+			if (!button) return;
+
+			const alertId = button.getAttribute('data-alert-id');
+			if (!alertId) return;
+
+			const idx = localAlerts.findIndex((a) => a.id === alertId);
+			if (idx >= 0) {
+				const alertToDelete = localAlerts[idx];
+				if (alertToDelete?.marker && typeof alertToDelete.marker.remove === 'function') {
+					alertToDelete.marker.remove();
+				}
+				localAlerts.splice(idx, 1);
+				saveToStorage();
+				renderFromPings();
+			}
+		});
+	}
+
+	document.addEventListener('alert-ping-created', (event) => {
+		const detail = event?.detail || {};
+		const pingId = detail.id;
+		const type = String(detail.type || 'Incident');
+		const ts = String(detail.timestamp || new Date().toLocaleString('fr-FR'));
+		const marker = detail.marker;
+
+		if (!pingId) return;
+
+		localAlerts.unshift({
+			id: pingId,
+			type,
+			niveau: 'Signalement utilisateur',
+			titre: `Alerte ${type}`,
+			message: `Ping ajouté le ${ts}`,
+			numero_urgence: type.toLowerCase().includes('incend') ? '18' : '112',
+			icone: type.toLowerCase().includes('incend') ? '🔥' : '🌊',
+			lat: detail.lat,
+			lon: detail.lon,
+			marker,
+		});
+
+		saveToStorage();
+		renderFromPings();
+	});
+
+	// Bouton pour vider toutes les alertes
+	if (clearBtn) {
+		clearBtn.addEventListener('click', () => {
+			localAlerts.forEach((a) => {
+				if (a.marker && typeof a.marker.remove === 'function') {
+					a.marker.remove();
+				}
+			});
+			localAlerts.length = 0;
+			localStorage.removeItem('bdx-hackathon-alerts');
+			renderFromPings();
+		});
+	}
+
+	refresh.addEventListener('click', renderFromPings);
+	mode.addEventListener('change', renderFromPings);
+	renderFromPings();
 }
 
 async function loadPreparationPage() {
