@@ -14,7 +14,7 @@
 <body>
   <header>
     <div class="header fixed top-0 left-0 w-full h-12 bg-veille-4">
-      <div class="topbar h-12 bg-veille-3 flex rounded-2xl items-center px-4 mx-4 mt-2" >
+      <div class="topbar h-12 bg-veille-3 flex rounded-2xl items-center px-4 mx-4 mt-2">
         <div class="logo w-16 h- bg-transparent rounded-">
           <img src="images/logo.png" alt="#" />
         </div>
@@ -28,10 +28,18 @@
   </header>
   <main class="min-h-screen pt-16 pb-24 bg-veille-4">
     <div class="container mx-auto px-4" id="home-content">
-      <section id="alerts-home-section" class="mb-4 hidden">
+      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-white font-semibold">Mode démo</h2>
+          <button id="home-demo-toggle"
+            class="px-3 py-2 rounded-lg bg-veille-2 text-white font-semibold">Activer</button>
+        </div>
+        <p class="text-white/80 text-sm mt-2">Affiche une alerte simulée sur l'accueil.</p>
+      </section>
+      <section id="alerts-home-section" class="mt-4 mb-4 hidden">
         <div id="alerts-home-container"></div>
       </section>
-      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-2">
+      <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4">
         <div class="flex items-center justify-between gap-3 mb-3">
           <h2 class="text-white font-semibold">Carte des risques</h2>
           <p id="map-status" class="text-white/80 text-xs">Chargement...</p>

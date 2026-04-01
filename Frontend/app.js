@@ -17,6 +17,19 @@ function setCoords(lat, lon) {
 	localStorage.setItem('lon', String(lon));
 }
 
+function isDemoModeEnabled() {
+	return localStorage.getItem('home_demo_mode') === '1';
+}
+
+function setDemoModeEnabled(enabled) {
+	localStorage.setItem('home_demo_mode', enabled ? '1' : '0');
+}
+
+function updateDemoToggleLabel(button, enabled) {
+	if (!button) return;
+	button.textContent = enabled ? 'Désactiver' : 'Activer';
+}
+
 async function apiGet(path) {
 	const res = await fetch(`${API_BASE}${path}`);
 	if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
@@ -27,6 +40,19 @@ function levelClass(level) {
 	if (level === 'critique') return 'bg-red-700 text-white';
 	if (level === 'élevé' || level === 'eleve') return 'bg-orange-600 text-white';
 	return 'bg-yellow-400 text-veille-4';
+}
+
+function normalizeRiskKey(value) {
+	return String(value || '')
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.trim()
+		.toLowerCase();
+}
+
+function preparationLinkForRisk(riskType) {
+	const safeType = encodeURIComponent(String(riskType || ''));
+	return `preparation.html?risk=${safeType}`;
 }
 
 function normalizeCoords(item) {
@@ -96,21 +122,31 @@ async function loadHome() {
 
 	loadHomeMap();
 
+	const demoToggle = qs('home-demo-toggle');
+	let demoMode = isDemoModeEnabled();
+	updateDemoToggleLabel(demoToggle, demoMode);
+
 	// Fetch alerts and show alert tiles if any
 	const alertsSection = qs('alerts-home-section');
 	const alertsContainer = qs('alerts-home-container');
 	if (!alertsSection || !alertsContainer) return;
 
-	try {
-		const { lat, lon } = getCoords();
-		const data = await apiGet(`/api/alerts?lat=${lat}&lon=${lon}`);
-		const alerts = Array.isArray(data) ? data : [];
-		if (alerts.length) {
-			alertsSection.classList.remove('hidden');
-			alertsContainer.innerHTML = alerts.map(a => {
-				const lvl = (a.niveau || '').toLowerCase();
-				return `
-					       <article class="rounded-2xl bg-veille-3 p-4 border border-white/10 mb-3">
+	const refreshHomeAlerts = async () => {
+		try {
+			const { lat, lon } = getCoords();
+			const path = demoMode
+				? `/api/alerts/simulate?lat=${lat}&lon=${lon}&severity=danger&temp=39`
+				: `/api/alerts?lat=${lat}&lon=${lon}`;
+			const data = await apiGet(path);
+			const fetchedAlerts = Array.isArray(data) ? data : [];
+			const alerts = demoMode ? fetchedAlerts.slice(0, 1) : fetchedAlerts;
+			if (alerts.length) {
+				alertsSection.classList.remove('hidden');
+				alertsContainer.innerHTML = alerts.map(a => {
+					const lvl = (a.niveau || '').toLowerCase();
+					const preparationHref = preparationLinkForRisk(a.type);
+					return `
+					       <a href="${preparationHref}" class="block rounded-2xl bg-veille-3 p-4 border border-white/10 mb-3 hover:border-white/30 transition" aria-label="Voir la preparation pour ${a.type || 'ce risque'}">
 						 <div class="flex items-center justify-between gap-2">
 						   <h3 class="text-white font-semibold">${a.icone || ''} ${a.titre || 'Alerte'}</h3>
 						   <span class="px-2 py-1 rounded-full text-xs font-semibold ${levelClass(lvl)}">${a.niveau || '-'}</span>
@@ -118,17 +154,29 @@ async function loadHome() {
 						 <p class="text-white/90 mt-2">${a.message || ''}</p>
 						 <p class="text-white/70 text-sm mt-2">Type: ${a.type || '-'}</p>
 						 <p class="text-white/70 text-sm">Urgence: ${a.numero_urgence || '-'}</p>
-					       </article>
+					       </a>
 				       `;
-			}).join('');
-		} else {
+				}).join('');
+			} else {
+				alertsSection.classList.add('hidden');
+				alertsContainer.innerHTML = '';
+			}
+		} catch (e) {
 			alertsSection.classList.add('hidden');
 			alertsContainer.innerHTML = '';
 		}
-	} catch (e) {
-		alertsSection.classList.add('hidden');
-		alertsContainer.innerHTML = '';
+	};
+
+	if (demoToggle) {
+		demoToggle.addEventListener('click', async () => {
+			demoMode = !demoMode;
+			setDemoModeEnabled(demoMode);
+			updateDemoToggleLabel(demoToggle, demoMode);
+			await refreshHomeAlerts();
+		});
 	}
+
+	await refreshHomeAlerts();
 
 	// Fetch and display weather below the map
 	const weatherSection = qs('weather-home-section');
@@ -256,6 +304,10 @@ async function loadPreparationPage() {
 
 	try {
 		const risks = await apiGet('/api/risks');
+		const params = new URLSearchParams(window.location.search);
+		const selectedFromUrl = params.get('risk');
+		const selectedKey = normalizeRiskKey(selectedFromUrl);
+
 		select.innerHTML = risks
 			.map((r) => {
 				const label = typeof r === 'string' && r.length
@@ -264,7 +316,17 @@ async function loadPreparationPage() {
 				return `<option value="${r}">${label}</option>`;
 			})
 			.join('');
-		if (risks.length) await renderRisk(risks[0]);
+
+		let initialRisk = risks[0];
+		if (selectedKey) {
+			const matched = risks.find((r) => normalizeRiskKey(r) === selectedKey);
+			if (matched) initialRisk = matched;
+		}
+
+		if (initialRisk) {
+			select.value = initialRisk;
+			await renderRisk(initialRisk);
+		}
 		select.addEventListener('change', (e) => renderRisk(e.target.value));
 	} catch (e) {
 		before.innerHTML = `<li class="text-red-300">Erreur API: ${e.message}</li>`;
