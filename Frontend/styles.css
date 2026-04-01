@@ -1,8 +1,8 @@
 :root {
-  --veille-1: #007b91;
-  --veille-2: #e3511d;
-  --veille-3: #004c5d;
-  --veille-4: #00222a;
+  --veille-1: #00aeef; /* Bleu Cyan (Accent) */
+  --veille-2: #f9a11b; /* Orange Ambré (Boutons / Alerte) */
+  --veille-3: #004b7a; /* Bleu Royal (Cartes / Cards) */
+  --veille-4: #001d3d; /* Bleu Nuit (Fond / Background) */
   background-color: var(--veille-4);
 }
 
@@ -273,4 +273,8 @@
 .risk-link:hover {
   border-color: #9aa6ff;
   color: #9aa6ff;
+}
+
+.logo-img {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.7));
 }
