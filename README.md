@@ -1,204 +1,205 @@
 # Phario - BDX Hackathon
 
-## Description du Projet
+## Project Description
 
-**Phario** est une application web innovante développée lors du hackathon de l'agglomération de Bordeaux en **5 jours**. L'application permet aux citoyens de rester informés sur les risques naturels et technologiques près de leur domicile, de se préparer aux situations d'urgence, et d'accéder rapidement aux numéros d'urgence.
+**Phario** is an innovative web application developed during the Bordeaux Agglomeration hackathon in **5 days**. The application allows citizens to stay informed about natural and technological risks near their homes, prepare for emergency situations, and quickly access emergency numbers.
 
-### Objectif
+### Objective
 
-Sensibiliser les habitants de Bordeaux et de son agglomération aux différents risques (inondations, tempêtes, canicules, tremblements de terre, risques industriels) et les aider à mieux se préparer en leur fournissant des informations géolocalisées et des conseils pratiques.
+Raise awareness among residents of Bordeaux and its metropolitan area about various risks (floods, storms, heat waves, earthquakes, industrial hazards) and help them prepare better by providing geolocation-based information and practical advice.
 
 ---
 
-## Fonctionnalités
+## Features
 
-### Page d'Accueil
+### Home Page
 
-- **Mode démo** : Permet de tester l'application avec des alertes simulées
-- **Recherche de risques** : Localiser les risques près d'une adresse spécifique
-- **Carte interactive** : Visualiser les alertes actives en temps réel
-- **Météo** : Affichage des conditions météorologiques actuelles et des prévisions
+- **Demo Mode** : Test the application with simulated alerts
+- **Risk Search** : Locate risks near a specific address
+- **Interactive Map** : View active alerts in real time
+- **Weather** : Display current weather conditions and forecasts
 
-### Page Préparation
+### Preparation Page
 
-- **Sélection du type de risque** : Choisir parmi 6 catégories de risques
-- **Conseils immédiats** : Actions à mener dans l'urgence
-- **Checklist préparative** : Liste des préparatifs à faire avant une catastrophe
-- **Lieux rafraîchissants** : Pour les situations de canicule, accès aux espaces frais de Bordeaux Métropole
+- **Risk Type Selection** : Choose from 6 risk categories
+- **Immediate Advice** : Actions to take in an emergency
+- **Preparative Checklist** : List of preparations to make before a disaster
+- **Cooling Spaces** : For heat wave situations, access to cool spaces in Bordeaux Metropolis
 
-### Page Alertes
+### Alerts Page
 
-- **Signalisation d'incidents** : Rapporter les incidents locaux
-- **Carte des alertes** : Visualisation interactive des incidents signalés
-- **Filtres** : Par type et sévérité des alertes
-- **Simulation** : Mode test avec températures simulées
+- **Incident Reporting** : Report local incidents
+- **Alert Map** : Interactive visualization of reported incidents
+- **Filters** : By type and severity of alerts
+- **Simulation** : Test mode with simulated temperatures
 
-### Page Urgence
+### Emergency Page
 
-- **Accès rapide** : Numéros d'urgence pour :
-  - **Pompiers** : 18
-  - **SAMU** : 15
+- **Quick Access** : Emergency numbers for:
+  - **Fire Department** : 18
+  - **Emergency Medical** : 15
   - **Police** : 17
-  - **Urgence européenne** : 112
-- **Appels directs** : Boutons d'appel intégrés pour un accès immédiat
+  - **European Emergency** : 112
+- **Direct Calls** : Integrated call buttons for immediate access
 
-### Page Résultats
+### Results Page
 
-- **Détails des risques** : Informations complètes pour chaque adresse
-- **Cartes des risques** : Visualisation géographique des zones à risque
-- **Historique** : Données historiques des incidents
+- **Risk Details** : Complete information for each address
+- **Risk Maps** : Geographic visualization of at-risk areas
+- **History** : Historical data of incidents
 
 ---
 
-## Stack Technologique
+## Technology Stack
 
 ### Frontend
 
-- **HTML5** : Structure sémantique
-- **CSS3 + Tailwind CSS** : Interface responsive et moderne
-- **JavaScript** : Interactivité et logique client
-- **Leaflet.js** : Cartes interactives
+- **HTML5** : Semantic structure
+- **CSS3 + Tailwind CSS** : Responsive and modern interface
+- **JavaScript** : Client-side interactivity and logic
+- **Leaflet.js** : Interactive maps
 
 ### Backend
 
 - **Python 3.10+**
-- **Flask** : Framework web léger et flexible
-- **APIs externes** :
-  - Géocodage (Nominatim/OpenStreetMap)
-  - NASA FIRMS : Données des incendies actifs
-  - GéoRisques API : Base de données des risques en France
-  - APIs météorologiques
+- **Flask** : Lightweight and flexible web framework
+- **External APIs** :
+  - Geocoding (Nominatim/OpenStreetMap)
+  - NASA FIRMS : Active fire data
+  - GéoRisques API : France risk database
+  - Weather APIs
 
 ### DevOps & Tools
 
-- **Git** : Contrôle de version
-- **GitHub** : Hébergement du code
-- **Requirements.txt** : Gestion des dépendances Python
+- **Git** : Version control
+- **GitHub** : Code hosting
+- **Requirements.txt** : Python dependency management
 
 ---
 
-## Structure du Projet
+## Project Structure
 
 ```
 BDX-Hackathon/
 ├── Frontend/
-│   ├── index.html              # Page d'accueil
-│   ├── preparation.html        # Guide de préparation
-│   ├── alert.html              # Signalement d'alertes
-│   ├── emergency.html          # Numéros d'urgence
-│   ├── resultats.html          # Résultats de recherche
-│   ├── styles.css              # Styles globaux
-│   ├── app.js                  # Logique JavaScript
-│   └── images/                 # Ressources (logos, icônes)
+│   ├── index.html              # Home page
+│   ├── preparation.html        # Preparation guide
+│   ├── alert.html              # Alert reporting
+│   ├── emergency.html          # Emergency numbers
+│   ├── resultats.html          # Search results
+│   ├── styles.css              # Global styles
+│   ├── app.js                  # JavaScript logic
+│   └── images/                 # Resources (logos, icons)
 │
 ├── backend/
-│   ├── app.py                  # Entrée principale Flask
+│   ├── app.py                  # Flask main entry point
 │   ├── config.py               # Configuration
-│   ├── .env                    # Variables d'environnement
-│   ├── requirements.txt        # Dépendances Python
+│   ├── .env                    # Environment variables
+│   ├── requirements.txt        # Python dependencies
 │   ├── services/
-│   │   ├── geocoding.py       # Service de géocodage
-│   │   ├── georisques.py      # Intégration GéoRisques API
-│   │   └── nasa_firms.py      # Données d'incendies actifs
-│   └── __pycache__/           # Cache Python
+│   │   ├── geocoding.py       # Geocoding service
+│   │   ├── georisques.py      # GéoRisques API integration
+│   │   └── nasa_firms.py      # Active fire data
+│   └── __pycache__/           # Python cache
 │
-├── README.md                   # Ce fichier
-├── Notes.txt                  # Notes du projet
-└── Architecture               # Documentation d'architecture
+├── README.md                   # This file
+├── Notes.txt                  # Project notes
+└── Architecture               # Architecture documentation
 ```
 
 ---
 
-## Installation et Démarrage
+## Installation & Setup
 
-### Prérequis
+### Requirements
 
 - Python 3.10+
 - Git
 
-### Installation du Backend
+### Backend Installation
 
 ```bash
-# Cloner le repository
+# Clone the repository
 git clone https://github.com/tomvieilledent/BDX-Hackathon.git
 cd BDX-Hackathon
 
-# Créer un environnement virtuel
+# Create a virtual environment
 python -m venv .venv
-source .venv/bin/activate  # Sur Windows: .venv\Scripts\activate
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Installer les dépendances
+# Install dependencies
 pip install -r backend/requirements.txt
 
-# Configurer les variables d'environnement
+# Configure environment variables
 cp backend/.env.example backend/.env
-# Éditer .env avec vos clés API
+# Edit .env with your API keys
 ```
 
-### Lancer le Backend
+### Launch Backend
 
 ```bash
 cd backend
 python app.py
 ```
 
-L'application sera accessible à `http://localhost:5000`
+The application will be accessible at `http://localhost:5000`
 
 ### Frontend
 
-Le frontend est servi par le backend Flask. Accédez simplement à l'URL du serveur dans votre navigateur.
+The frontend is served by the Flask backend. Simply access the server URL in your browser.
 
-Alternativement, for development:
+Alternatively, for development:
 
 ```bash
-# Avec un serveur local (Python)
+# With a local Python server
 cd Frontend
 python -m http.server 8000
-# Accessible à http://localhost:8000
+# Accessible at http://localhost:8000
 ```
 
 ---
 
-## Équipe de Développement
+## Development Team
 
 ### Tom Vieilledent - Frontend Developer
 
-- **Responsabilité** : Interface utilisateur, UX/Design, intégration Leaflet
+- **Responsibility** : User interface, UX/Design, Leaflet integration
 - **Technologies** : HTML, CSS, JavaScript, Tailwind CSS
-- **Contributions** : Design responsive, pages principales, intégration des APIs frontend
+- **Contributions** : Responsive design, main pages, frontend API integration
 
 ### Florian Roosebeke - Backend Developer
 
-- **Responsabilité** : Architecture serveur, APIs, intégration des services externes
+- **Responsibility** : Server architecture, APIs, external services integration
 - **Technologies** : Python, Flask, GéoRisques API
-- **Contributions** : Endpoints principaux, logique métier
+- **Contributions** : Main endpoints, business logic
 
 ### Nabil Zinini - Backend Developer
 
-- **Responsabilité** : Base de données, services spécialisés, caching
+- **Responsibility** : Database, specialized services, caching
 - **Technologies** : Python, NASA FIRMS API
-- **Contributions** : Services de données, optimisations
+- **Contributions** : Data services, optimizations
 
 ---
 
-## APIs et Services Externes Utilisés
+## External APIs and Services Used
 
-| Service                       | Utilité                              | Endpoint                             |
-| ----------------------------- | ------------------------------------ | ------------------------------------ |
-| **OpenStreetMap / Nominatim** | Géocodage (adresse → coordonnées)    | https://nominatim.openstreetmap.org  |
-| **GéoRisques API**            | Base de données des risques naturels | https://georisques.gouv.fr           |
-| **NASA FIRMS**                | Détection des incendies actifs       | https://firms.modaps.eosdis.nasa.gov |
-| **Leaflet.js**                | Cartes interactives                  | https://leafletjs.com                |
+| Service                       | Usage                             | Endpoint                             |
+| ----------------------------- | --------------------------------- | ------------------------------------ |
+| **OpenStreetMap / Nominatim** | Geocoding (address → coordinates) | https://nominatim.openstreetmap.org  |
+| **GéoRisques API**            | Natural risks database            | https://georisques.gouv.fr           |
+| **NASA FIRMS**                | Active fire detection             | https://firms.modaps.eosdis.nasa.gov |
+| **Leaflet.js**                | Interactive maps                  | https://leafletjs.com                |
 
 ---
 
-## Fonctionnalités Futures
+## Future Features
 
-- [ ] Notifications push pour les alertes critique
-- [ ] Système d'authentification et comptes utilisateurs
-- [ ] Support multilingue (EN, ES, etc.)
-- [ ] Dashboard administrateur pour la gestion des données
-- [ ] Prédictions d'occurrence des risques (ML)
+- [ ] Push notifications for critical alerts
+- [ ] Authentication system and user accounts
+- [ ] Multi-language support (EN, ES, etc.)
+- [ ] Admin dashboard for data management
+- [ ] Risk occurrence predictions (ML)
+- [ ] Addition of different risk types
 
 ---
 
@@ -213,8 +214,8 @@ python -m http.server 8000
 
 ## Statistiques du Projet
 
-- **Durée** : Hackathon (48-72 heures)
-- **Équipe** : 3 développeurs (Holberton School - Promotion 1A)
+- **Duration** : Hackathon (5 days)
+- **Team** : 3 developers (Holberton School - Promotion 1A)
 - **Stack** : Flask, HTML/CSS, JavaScript
 - **Pages** : 5 pages principales
 - **Services** : 3+ APIs externes intégrées
