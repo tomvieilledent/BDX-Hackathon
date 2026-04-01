@@ -274,3 +274,7 @@
   border-color: #9aa6ff;
   color: #9aa6ff;
 }
+
+.logo-img {
+  filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.7));
+}
