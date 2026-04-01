@@ -30,23 +30,19 @@
     <div class="container mx-auto px-4">
       <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
         <h1 class="text-white text-xl font-anton">Signaler un incident</h1>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
           <label class="text-white/90 text-sm">Type
             <select id="mode" class="mt-1 w-full rounded-lg p-2 bg-veille-4 text-white border border-white/20">
-              <option value="simulate">simulation</option>
-              <option value="live">live</option>
+              <option value="Incendie">Incendie</option>
+              <option value="Inondation">Inondation</option>
             </select>
           </label>
           <label class="text-white/90 text-sm">Sévérité
             <select id="severity" class="mt-1 w-full rounded-lg p-2 bg-veille-4 text-white border border-white/20">
-              <option value="mixed">mixed</option>
-              <option value="warning">warning</option>
-              <option value="danger">danger</option>
+              <option value="faible">Faible</option>
+              <option value="modere">Modéré</option>
+              <option value="critique">Critique</option>
             </select>
-          </label>
-          <label class="text-white/90 text-sm">Temperature simulée
-            <input id="temp" type="number" step="0.1"
-              class="mt-1 w-full rounded-lg p-2 bg-veille-4 text-white border border-white/20" placeholder="ex: 39" />
           </label>
         </div>
         <button id="refresh-alerts"
