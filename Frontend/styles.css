@@ -1,8 +1,9 @@
 :root {
   --veille-1: #007b91;
   --veille-2: #e3511d;
-  --veille-3: #004c5d; 
-  --veille-4: #00222a; 
+  --veille-3: #004c5d;
+  --veille-4: #00222a;
+  background-color: var(--veille-4);
 }
 
 @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
