@@ -3,7 +3,7 @@
   <head>
     <title>Urgence</title>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     <link
       rel="stylesheet"
@@ -13,114 +13,130 @@
   </head>
 
   <body>
-      <header>
-    <div class="header fixed top-0 left-0 w-full h-12 bg-veille-4">
-      <div class="topbar h-12 bg-veille-3 flex rounded-2xl items-center px-4 mx-4 mt-2" >
-        <div class="logo w-16 h- bg-transparent rounded-">
-          <img src="images/logo.png" alt="#" />
-        </div>
-        <div class="title-rect flex-1 h-8 bg-veille-1 rounded-xl ml-3 flex items-center justify-center px-3">
-          <p class="text-lg sm:text-2xl font-anton text-white">
-            Veille Bordeaux
-          </p>
+    <header>
+      <div class="header fixed top-0 left-0 w-full h-12 bg-veille-4">
+        <div
+          class="topbar h-12 bg-veille-3 flex rounded-2xl items-center px-4 mx-4 mt-2"
+        >
+          <div class="logo w-16 h- bg-transparent rounded-">
+            <img src="images/logo.png" alt="#" />
+          </div>
+          <div
+            class="title-rect flex-1 h-8 bg-veille-1 rounded-xl ml-3 flex items-center justify-center px-3"
+          >
+            <p class="text-lg sm:text-2xl font-anton text-white">
+              Veille Bordeaux
+            </p>
+          </div>
         </div>
       </div>
-    </div>
-  </header>
-    <main class="min-h-screen pt-16 pb-24 bg-veille-4">
-      <div class="container mx-auto px-4 mt-2">
-        <section class="rounded-2xl bg-veille-3 p-4 border border-white/10 ">
-          <h1 class="text-white text-xl font-anton">Numeros d'urgence</h1>
-          <ul class="space-y-2">
-            <li
-              class="pompier p-4 my-2 bg-veille-1 border border-white/10 rounded-2xl"
-            >
-              <div class="flex ">
-                <div
-                  class="data-emergency bg-veille-3 p-4 flex-1 rounded-2xl flex items-center"
-                >
-                  <p class="text-black font-semibold text-white">Pompiers : 18</p>
-                </div>
-                <div
-                  class="button-call p-4 flex-1 rounded-2xl flex items-center justify-center"
-                >
-                  <a
-                    href="tel:18"
-                    class="inline-block px-4 py-2 bg-veille-2 text-white font-semibold rounded-xl"
-                    >Appeler</a
-                  >
-                </div>
-              </div>
-            </li>
+    </header>
 
-            <li
-              class="pompier p-4 my-2 bg-veille-1 border border-white/10 rounded-2xl"
-            >
-              <div class="flex">
-                <div
-                  class="data-emergency bg-veille-3 p-4 flex-1 rounded-2xl flex items-center"
-                >
-                  <p class="text-black font-semibold text-white">SAMU : 15</p>
-                </div>
-                <div
-                  class="button-call p-4 flex-1 rounded-2xl flex items-center justify-center"
-                >
-                  <a
-                    href="tel:15"
-                    class="inline-block px-4 py-2 bg-veille-2 text-white font-semibold rounded-xl"
-                    >Appeler</a
-                  >
-                </div>
-              </div>
-            </li>
+    <main class="min-h-screen pt-16 pb-24 bg-veille-4 mt-2">
+      <div class="container mx-auto px-4">
+        <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
+          <h1 class="text-white text-xl font-anton">Numéros d'urgence</h1>
+          <p class="text-white/70 text-sm mt-1 mb-4">
+            Appelez immédiatement en cas d'urgence
+          </p>
 
-            <li
-              class="pompier p-4 my-2 bg-veille-1 border border-white/10 rounded-2xl"
+          <div class="space-y-3">
+            <!-- Pompiers -->
+            <div
+              class="bg-veille-1 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-white/20 transition-colors"
             >
-              <div class="flex">
+              <div class="flex items-center gap-3 flex-1">
                 <div
-                  class="data-emergency bg-veille-3 p-4 flex-1 rounded-2xl flex items-center"
+                  class="w-12 h-12 bg-veille-3 rounded-lg flex items-center justify-center"
                 >
-                  <p class="text-black font-semibold text-white">Police : 17</p>
+                  <i class="fas fa-fire text-white text-lg"></i>
                 </div>
-                <div
-                  class="button-call p-4 flex-1 rounded-2xl flex items-center justify-center"
-                >
-                  <a
-                    href="tel:17"
-                    class="inline-block px-4 py-2 bg-veille-2 text-white font-semibold rounded-xl"
-                    >Appeler</a
-                  >
+                <div>
+                  <p class="text-white font-semibold">Pompiers</p>
+                  <p class="text-white/70 text-sm">18</p>
                 </div>
               </div>
-            </li>
+              <a
+                href="tel:18"
+                class="px-4 py-2 bg-veille-2 text-white font-semibold rounded-lg hover:bg-opacity-90 transition-all active:scale-95"
+              >
+                Appeler
+              </a>
+            </div>
 
-            <li
-              class="pompier p-4 my-2 bg-veille-1 border border-white/10 rounded-2xl"
+            <!-- SAMU -->
+            <div
+              class="bg-veille-1 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-white/20 transition-colors"
             >
-              <div class="flex">
+              <div class="flex items-center gap-3 flex-1">
                 <div
-                  class="data-emergency bg-veille-3 p-3 flex-1 rounded-2xl flex items-center"
+                  class="w-12 h-12 bg-veille-3 rounded-lg flex items-center justify-center"
                 >
-                  <p class="text-black font-semibold text-white">
-                    Numéro d'urgence européen : 112
-                  </p>
+                  <i class="fas fa-ambulance text-white text-lg"></i>
                 </div>
-                <div
-                  class="button-call p-4 flex-1 rounded-2xl flex items-center justify-center"
-                >
-                  <a
-                    href="tel:112"
-                    class="inline-block px-4 py-2 bg-veille-2 text-white font-semibold rounded-xl"
-                    >Appeler</a
-                  >
+                <div>
+                  <p class="text-white font-semibold">SAMU</p>
+                  <p class="text-white/70 text-sm">15</p>
                 </div>
               </div>
-            </li>
-          </ul>
+              <a
+                href="tel:15"
+                class="px-4 py-2 bg-veille-2 text-white font-semibold rounded-lg hover:bg-opacity-90 transition-all active:scale-95"
+              >
+                Appeler
+              </a>
+            </div>
+
+            <!-- Police -->
+            <div
+              class="bg-veille-1 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-white/20 transition-colors"
+            >
+              <div class="flex items-center gap-3 flex-1">
+                <div
+                  class="w-12 h-12 bg-veille-3 rounded-lg flex items-center justify-center"
+                >
+                  <i class="fas fa-shield text-white text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-white font-semibold">Police</p>
+                  <p class="text-white/70 text-sm">17</p>
+                </div>
+              </div>
+              <a
+                href="tel:17"
+                class="px-4 py-2 bg-veille-2 text-white font-semibold rounded-lg hover:bg-opacity-90 transition-all active:scale-95"
+              >
+                Appeler
+              </a>
+            </div>
+
+            <!-- Numéro d'urgence européen -->
+            <div
+              class="bg-veille-1 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-3 hover:border-white/20 transition-colors"
+            >
+              <div class="flex items-center gap-3 flex-1">
+                <div
+                  class="w-12 h-12 bg-veille-3 rounded-lg flex items-center justify-center"
+                >
+                  <i class="fas fa-globe text-white text-lg"></i>
+                </div>
+                <div>
+                  <p class="text-white font-semibold">Urgence européenne</p>
+                  <p class="text-white/70 text-sm">112</p>
+                </div>
+              </div>
+              <a
+                href="tel:112"
+                class="px-4 py-2 bg-veille-2 text-white font-semibold rounded-lg hover:bg-opacity-90 transition-all active:scale-95"
+              >
+                Appeler
+              </a>
+            </div>
+          </div>
         </section>
       </div>
     </main>
+
     <footer>
       <!-- Navbar -->
       <div class="fixed bottom-0 left-0 w-full">
@@ -172,6 +188,7 @@
         </div>
       </div>
     </footer>
+
     <script src="app.js"></script>
   </body>
 </html>
