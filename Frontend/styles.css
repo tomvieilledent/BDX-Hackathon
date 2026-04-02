@@ -176,7 +176,12 @@
 
 /* Modal results page */
 .results-modal-backdrop {
-  background: radial-gradient(circle at 30% 20%, #1a1f36 0%, #0b0f18 55%, #070a10 100%);
+  background: radial-gradient(
+    circle at 30% 20%,
+    #1a1f36 0%,
+    #0b0f18 55%,
+    #070a10 100%
+  );
   display: flex;
   align-items: center;
   justify-content: center;
@@ -199,7 +204,10 @@
   border-radius: 9999px;
   font-weight: 500;
   font-size: 0.9rem;
-  transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
+  transition:
+    border-color 0.15s ease,
+    color 0.15s ease,
+    background-color 0.15s ease;
 }
 
 .results-back-home-btn:hover {
