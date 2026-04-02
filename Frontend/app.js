@@ -63,26 +63,97 @@ function preparationLinkForRisk(riskType) {
 function checklistIconForLine(text) {
   const t = String(text || '').toLowerCase();
   if (!t) return '•';
+  // Électricité
   if (t.includes('électr') || t.includes('electr')) return '⚡️';
+  // Gaz
   if (t.includes('gaz')) return '🔥';
+  // Nourriture / Conserve (DOIT être AVANT eau pour "Eau et nourriture")
+  if (t.includes('nourrit') || t.includes('aliment') || t.includes('conserv'))
+    return '🥫';
+  // Eau / Hydratation
   if (t.includes('eau') || t.includes('boire')) return '💧';
+  // Médicaments
   if (t.includes('médicament') || t.includes('medicament')) return '💊';
+  // Documents
   if (t.includes('document')) return '📄';
-  if (t.includes('radio')) return '📻';
+  // Mouiller / Brumisateur (sauf tissus humide)
+  if (
+    (t.includes('mouiller') || t.includes('brumisateur')) &&
+    !t.includes('tissu')
+  )
+    return '💧';
+  // Tissus humide - préférer tissu
+  if (t.includes('tissu')) return '🧵';
+  // Radio / Communication / Signal / Alerte
+  if (t.includes('radio') || t.includes('signal') || t.includes('alerte'))
+    return '📻';
+  // Appeler / Téléphoner - mais PAS "ne pas téléphoner"
+  if ((t.includes('appel') || t.includes('telephon')) && !t.includes('ne pas'))
+    return '📞';
+  // Ne pas téléphoner / Téléphoner inutilement - croix seule
+  if (t.includes('ne pas') && t.includes('telephon')) return '❌';
+  // Lampe / Torche
   if (t.includes('lampe') || t.includes('torche')) return '🔦';
-  if (t.includes('extincteur')) return '🧯';
+  // Extincteur / Inflammable
+  if (
+    t.includes('extincteur') ||
+    t.includes('inflammable') ||
+    t.includes('combustible')
+  )
+    return '🧯';
+  // Issue / Évacuation / Sortie
   if (
     t.includes('issue') ||
     t.includes('évacuation') ||
-    t.includes('evacuation')
+    t.includes('evacuation') ||
+    t.includes('sortie') ||
+    t.includes('rassemblement') ||
+    t.includes('refuge')
   )
     return '🚪';
-  if (t.includes('monter') || t.includes('hauteur')) return '⬆️';
-  if (t.includes('ne pas sortir')) return '🏠';
-  if (t.includes('appeler')) return '📞';
-  if (t.includes('volet') || t.includes('fenêtre') || t.includes('fenetre'))
+  // Monter / Hauteur
+  if (t.includes('monter') || t.includes('hauteur') || t.includes('étage'))
+    return '⬆️';
+  // Ne pas sortir / Abri
+  if (t.includes('ne pas sortir') || t.includes('rester')) return '🏠';
+  // Volet / Fenêtre
+  if (
+    t.includes('volet') ||
+    t.includes('fenêtre') ||
+    t.includes('fenetre') ||
+    t.includes('porte')
+  )
     return '🪟';
-  if (t.includes('ascenseur')) return '🚫';
+  // Ascenseur / Escalier
+  if (t.includes('ascenseur') || t.includes('escalier')) return '🚫';
+  // Ventilation / Climatiseur / Refroidissement
+  if (
+    t.includes('ventilateur') ||
+    t.includes('climatiseur') ||
+    t.includes('climat') ||
+    t.includes('refroid')
+  )
+    return '❄️';
+  // Détecteur / Préparation
+  if (
+    t.includes('detecteur') ||
+    t.includes('détecteur') ||
+    t.includes('préparer') ||
+    t.includes('preparer') ||
+    t.includes('installer') ||
+    t.includes('instaler')
+  )
+    return '🔔';
+  // Direction / Guidance / Couvrir
+  if (
+    t.includes('diriger') ||
+    t.includes('couvrir') ||
+    t.includes('bouche') ||
+    t.includes('revenir') ||
+    t.includes('arriere') ||
+    t.includes('arrière')
+  )
+    return '🧭';
   return '•';
 }
 
