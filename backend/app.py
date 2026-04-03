@@ -1,3 +1,24 @@
+"""
+BDX-Hackathon Flask Backend Server
+
+A comprehensive REST API for risk prevention and disaster management in the Bordeaux region.
+
+Features:
+- Risk assessment combining multiple data sources
+- Weather data aggregation from Open-Meteo API
+- Integration with Géorisques API for hazard data
+- NASA FIRMS integration for active fire detection
+- Alert generation based on user location and environmental conditions
+- Demonstration mode for testing
+
+Endpoints:
+- GET /api/risks: List all available risk types
+- GET /api/risks/<risk_type>: Get details for a specific risk
+- GET /api/alerts: Get alerts for a location
+- GET /api/alerts/simulate: Get simulated alerts for testing
+- GET /api/map: Get risk data for map visualization
+"""
+
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import requests
@@ -8,12 +29,12 @@ import random
 import math
 
 try:
-    # Imports relatifs quand le module est chargé comme package (backend.app)
+    # Relative imports when module is loaded as package (backend.app)
     from .config import Config
     from .services.georisques import GeorisquesService
     from .services.nasa_firms import NasaFirmsService
 except (ImportError, ValueError):
-    # Fallback quand on exécute directement backend/app.py
+    # Fallback when executing directly backend/app.py
     from config import Config
     from services.georisques import GeorisquesService
     from services.nasa_firms import NasaFirmsService
@@ -35,7 +56,15 @@ nasa_firms_service = NasaFirmsService(app.config.get('NASA_FIRMS_API_KEY'))
 
 
 def load_risks_data():
-    """Load risks data from risques.json file"""
+    """
+    Load risks data from risques.json file.
+
+    Reads the risk configuration file and transforms it from a list format
+    to a dictionary indexed by risk type for easier lookup.
+
+    Returns:
+        dict: Dictionary mapping risk types to their configuration objects
+    """
     try:
         # Get the directory of the current file
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -60,6 +89,15 @@ mock_risks = load_risks_data()
 
 
 def _default_endpoint_for_source(source):
+    """
+    Map data source to its default API endpoint.
+
+    Args:
+        source: The data source name ('meteo' or 'georisques')
+
+    Returns:
+        str: The endpoint path or None if source is not recognized
+    """
     if source == "meteo":
         return "/api/weather/forecast"
     if source == "georisques":
@@ -69,13 +107,20 @@ def _default_endpoint_for_source(source):
 
 @app.route('/')
 def index():
+    """
+    Health check endpoint.
+    Returns a simple confirmation that the backend server is running.
+    """
     return "Backend for Risk Prevention App is running!"
 
 
 @app.route('/api/risks', methods=['GET'])
 def get_risks():
     """
-    Returns the list of all documented risks.
+    API Endpoint: List all documented risk types.
+
+    Returns:
+        list: JSON array of risk type identifiers
     """
     return jsonify(list(mock_risks.keys()))
 
@@ -83,7 +128,13 @@ def get_risks():
 @app.route('/api/risks/<risk_type>', methods=['GET'])
 def get_risk_details(risk_type):
     """
-    Returns the details for a specific risk type.
+    API Endpoint: Get detailed information for a specific risk type.
+
+    Args:
+        risk_type: The risk identifier (e.g., 'Inondation', 'Canicule')
+
+    Returns:
+        dict: Risk configuration object or error message with 404 status
     """
     risk = mock_risks.get(risk_type)
     if risk:
@@ -92,6 +143,15 @@ def get_risk_details(risk_type):
 
 
 def _safe_float(value):
+    """
+    Safely convert a value to float, returning None on failure.
+
+    Args:
+        value: The value to convert
+
+    Returns:
+        float or None: The converted float or None if conversion fails
+    """
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -99,6 +159,17 @@ def _safe_float(value):
 
 
 def _coords_from_mapping(obj):
+    """
+    Extract latitude and longitude from an object with various property formats.
+
+    Handles multiple property naming conventions and nested structures.
+
+    Args:
+        obj: Dictionary object potentially containing coordinate data
+
+    Returns:
+        dict or None: Dictionary with 'lat' and 'lon' keys, or None if not found
+    """
     if not isinstance(obj, dict):
         return None
 
@@ -137,7 +208,19 @@ def _coords_from_mapping(obj):
 
 
 def extract_alert_location(payload, default_lat, default_lon, max_depth=4):
-    """Find first valid lat/lon in nested API payload, fallback to requested point."""
+    """
+    Find first valid latitude/longitude in nested API payload.
+    Recursively searches through nested dictionaries and lists to extract coordinates.
+
+    Args:
+        payload: Nested data structure to search
+        default_lat: Default latitude if extraction fails
+        default_lon: Default longitude if extraction fails
+        max_depth: Maximum recursion depth to prevent infinite loops
+
+    Returns:
+        dict: Dictionary with 'lat' and 'lon' keys
+    """
     if max_depth < 0:
         return {"lat": default_lat, "lon": default_lon}
 
@@ -311,11 +394,19 @@ def generate_alerts_from_risks(georisques_data, weather_data, lat, lon):
 @app.route('/api/alerts', methods=['GET'])
 def get_alerts():
     """
-    Get alerts for a specific location.
-    Requires 'lat' and 'lon' query parameters.
-    Returns intelligent alerts combining:
-    - Géorisques data (SEVESO sites, flood risks, seismic risks)
-    - Météo France data (temperature, wind, weather conditions)
+    API Endpoint: Get alerts for a specific location.
+
+    Combines data from multiple sources to generate intelligent alerts:
+    - Géorisques API for industrial hazards and flood risks
+    - Open-Meteo API for weather-based warnings
+
+    Query Parameters:
+        lat (float): Latitude coordinate (required)
+        lon (float): Longitude coordinate (required)
+
+    Returns:
+        list: Array of alert objects with location, severity, and details
+        dict: Error message with 400 status if coordinates missing
     """
     # Récupère les coordonnées depuis la requête
     lat = request.args.get('lat', type=float)
@@ -341,10 +432,19 @@ def get_alerts():
 @app.route('/api/alerts/simulate', methods=['GET'])
 def simulate_alerts():
     """
-    Get simulated alerts for demonstration.
-    Requires 'lat' and 'lon' query parameters.
-    Optional 'severity' parameter: 'danger', 'warning', or 'mixed' (default: 'mixed')
-    Optional 'temp' parameter: simulated temperature in C for canicule logic.
+    API Endpoint: Get simulated alerts for demonstration and testing.
+
+    Generates realistic alert scenarios with configurable parameters.
+    Useful for testing the frontend without live data.
+
+    Query Parameters:
+        lat (float): Latitude coordinate (required)
+        lon (float): Longitude coordinate (required)
+        severity (str): Alert severity level - 'danger', 'warning', or 'mixed' (default: 'mixed')
+        temp (float): Simulated temperature in Celsius for heat-related alerts
+
+    Returns:
+        list: Array of simulated alert objects
     """
     lat = request.args.get('lat')
     lon = request.args.get('lon')
@@ -460,6 +560,7 @@ def simulate_alerts():
 
 
 # Bordeaux region points for weather aggregation
+# Used to fetch weather data from multiple points and aggregate them
 BORDEAUX_POINTS = [
     (44.84, -0.58),  # centre
     (44.99, -0.58),  # nord
@@ -470,8 +571,18 @@ BORDEAUX_POINTS = [
 
 
 def fetch_weather_multi_points(points):
-    """Fetch temperature data from Open-Meteo API for multiple points.
-    Returns list of results, one per point."""
+    """
+    Fetch weather data from Open-Meteo API for multiple geographic points.
+
+    Aggregates weather information across multiple locations to get
+    comprehensive forecast data for the Bordeaux region.
+
+    Args:
+        points: List of tuples (latitude, longitude)
+
+    Returns:
+        dict or None: JSON response from Open-Meteo API or None on error
+    """
     base_url = "https://api.open-meteo.com/v1/forecast"
     latitudes = ",".join(str(lat) for lat, _ in points)
     longitudes = ",".join(str(lon) for _, lon in points)
@@ -493,8 +604,18 @@ def fetch_weather_multi_points(points):
 
 
 def compute_hourly_mean(response_list):
-    """Compute hourly mean temperature across all locations.
-    response_list is a list of result objects from Open-Meteo (one per location)"""
+    """
+    Compute hourly mean weather data across all locations.
+
+    Aggregates weather readings from multiple points to provide
+    representative conditions for the entire region.
+
+    Args:
+        response_list: List of Open-Meteo API response objects (one per location)
+
+    Returns:
+        list: List of processed hourly weather data objects
+    """
     if not response_list or not isinstance(response_list, list) or len(response_list) == 0:
         return []
 

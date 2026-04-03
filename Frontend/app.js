@@ -1,3 +1,15 @@
+/**
+ * BDX-Hackathon Frontend Application
+ *
+ * A web application for risk prevention and disaster management in Bordeaux.
+ * Features include:
+ * - Risk mapping and visualization
+ * - Real-time alerts
+ * - Emergency preparedness guides
+ * - NASA FIRMS fire detection integration
+ * - Interactive maps with Leaflet
+ */
+
 const API_BASE = localStorage.getItem('api_base') || 'http://127.0.0.1:7000';
 const DEFAULT_LAT = 44.84;
 const DEFAULT_LON = -0.58;
@@ -7,46 +19,92 @@ let homeNasaFiresLayer = null;
 let homeLayersControl = null; // contrôle de couches Leaflet de la home
 let homeFloodZonesLayer = null; // couche GeoJSON des zones potentiellement inondables
 
+/**
+ * Query selector shorthand.
+ * Retrieves an HTML element by its ID.
+ *
+ * @param {string} id - The element's ID
+ * @returns {HTMLElement|null} The element or null if not found
+ */
 function qs(id) {
   return document.getElementById(id);
 }
 
+/**
+ * Retrieves the stored coordinates from local storage.
+ * Falls back to default values if not set.
+ *
+ * @returns {Object} Object with lat and lon properties
+ */
 function getCoords() {
   const lat = Number(localStorage.getItem('lat') || DEFAULT_LAT);
   const lon = Number(localStorage.getItem('lon') || DEFAULT_LON);
   return { lat, lon };
 }
 
+/**
+ * Stores coordinates in local storage for persistence.
+ *
+ * @param {number} lat - Latitude coordinate
+ * @param {number} lon - Longitude coordinate
+ */
 function setCoords(lat, lon) {
   localStorage.setItem('lat', String(lat));
   localStorage.setItem('lon', String(lon));
 }
 
+/**
+ * Checks if demonstration mode is currently enabled.
+ *
+ * @returns {boolean} True if demo mode is enabled, false otherwise
+ */
 function isDemoModeEnabled() {
   return localStorage.getItem('home_demo_mode') === '1';
 }
 
+/**
+ * Enables or disables demonstration mode with simulated data.
+ *
+ * @param {boolean} enabled - Whether to enable demo mode
+ */
 function setDemoModeEnabled(enabled) {
   localStorage.setItem('home_demo_mode', enabled ? '1' : '0');
 }
 
-function updateDemoToggleLabel(button, enabled) {
-  // Logo reste visible - pas de texte
-  if (!button) return;
-}
-
+/**
+ * Fetches data from the backend API.
+ *
+ * @async
+ * @param {string} path - The API endpoint path (e.g., '/api/alerts')
+ * @returns {Promise<Object>} The JSON response from the API
+ * @throws {Error} If the HTTP response is not ok
+ */
 async function apiGet(path) {
   const res = await fetch(`${API_BASE}${path}`);
   if (!res.ok) throw new Error(`HTTP ${res.status} ${path}`);
   return res.json();
 }
 
+/**
+ * Returns CSS classes for styling alert severity levels.
+ * Maps risk levels to Tailwind CSS color classes.
+ *
+ * @param {string} level - The alert level ('critique', 'élevé', or other)
+ * @returns {string} CSS class string for styling
+ */
 function levelClass(level) {
   if (level === 'critique') return 'bg-red-700 text-white';
   if (level === 'élevé' || level === 'eleve') return 'bg-orange-600 text-white';
   return 'bg-yellow-400 text-veille-4';
 }
 
+/**
+ * Normalizes a risk key by removing accents and converting to lowercase.
+ * Used for consistent risk type matching across the application.
+ *
+ * @param {string|any} value - The value to normalize
+ * @returns {string} Normalized key string
+ */
 function normalizeRiskKey(value) {
   return String(value || '')
     .normalize('NFD')
@@ -55,108 +113,35 @@ function normalizeRiskKey(value) {
     .toLowerCase();
 }
 
+/**
+ * Generates a link to the preparation page for a specific risk type.
+ *
+ * @param {string} riskType - The type of risk
+ * @returns {string} URL link to the preparation page with risk type as query parameter
+ */
 function preparationLinkForRisk(riskType) {
   const safeType = encodeURIComponent(String(riskType || ''));
   return `preparation.html?risk=${safeType}`;
 }
 
-function checklistIconForLine(text) {
-  const t = String(text || '').toLowerCase();
-  if (!t) return '•';
-  // Électricité
-  if (t.includes('électr') || t.includes('electr')) return '⚡️';
-  // Gaz
-  if (t.includes('gaz')) return '🔥';
-  // Nourriture / Conserve (DOIT être AVANT eau pour "Eau et nourriture")
-  if (t.includes('nourrit') || t.includes('aliment') || t.includes('conserv'))
-    return '🥫';
-  // Eau / Hydratation
-  if (t.includes('eau') || t.includes('boire')) return '💧';
-  // Médicaments
-  if (t.includes('médicament') || t.includes('medicament')) return '💊';
-  // Documents
-  if (t.includes('document')) return '📄';
-  // Mouiller / Brumisateur (sauf tissus humide)
-  if (
-    (t.includes('mouiller') || t.includes('brumisateur')) &&
-    !t.includes('tissu')
-  )
-    return '💧';
-  // Tissus humide - préférer tissu
-  if (t.includes('tissu')) return '🧵';
-  // Radio / Communication / Signal / Alerte
-  if (t.includes('radio') || t.includes('signal') || t.includes('alerte'))
-    return '📻';
-  // Appeler / Téléphoner - mais PAS "ne pas téléphoner"
-  if ((t.includes('appel') || t.includes('telephon')) && !t.includes('ne pas'))
-    return '📞';
-  // Ne pas téléphoner / Téléphoner inutilement - croix seule
-  if (t.includes('ne pas') && t.includes('telephon')) return '❌';
-  // Lampe / Torche
-  if (t.includes('lampe') || t.includes('torche')) return '🔦';
-  // Extincteur / Inflammable
-  if (
-    t.includes('extincteur') ||
-    t.includes('inflammable') ||
-    t.includes('combustible')
-  )
-    return '🧯';
-  // Issue / Évacuation / Sortie
-  if (
-    t.includes('issue') ||
-    t.includes('évacuation') ||
-    t.includes('evacuation') ||
-    t.includes('sortie') ||
-    t.includes('rassemblement') ||
-    t.includes('refuge')
-  )
-    return '🚪';
-  // Monter / Hauteur
-  if (t.includes('monter') || t.includes('hauteur') || t.includes('étage'))
-    return '⬆️';
-  // Ne pas sortir / Abri
-  if (t.includes('ne pas sortir') || t.includes('rester')) return '🏠';
-  // Volet / Fenêtre
-  if (
-    t.includes('volet') ||
-    t.includes('fenêtre') ||
-    t.includes('fenetre') ||
-    t.includes('porte')
-  )
-    return '🪟';
-  // Ascenseur / Escalier
-  if (t.includes('ascenseur') || t.includes('escalier')) return '🚫';
-  // Ventilation / Climatiseur / Refroidissement
-  if (
-    t.includes('ventilateur') ||
-    t.includes('climatiseur') ||
-    t.includes('climat') ||
-    t.includes('refroid')
-  )
-    return '❄️';
-  // Détecteur / Préparation
-  if (
-    t.includes('detecteur') ||
-    t.includes('détecteur') ||
-    t.includes('préparer') ||
-    t.includes('preparer') ||
-    t.includes('installer') ||
-    t.includes('instaler')
-  )
-    return '🔔';
-  // Direction / Guidance / Couvrir
-  if (
-    t.includes('diriger') ||
-    t.includes('couvrir') ||
-    t.includes('bouche') ||
-    t.includes('revenir') ||
-    t.includes('arriere') ||
-    t.includes('arrière')
-  )
-    return '🧭';
-  return '•';
+/**
+ * Updates the visual label for the demo mode toggle button.
+ * Currently maintains logo visibility without text changes.
+ *
+ * @param {HTMLElement|null} button - The toggle button element
+ * @param {boolean} enabled - Whether demo mode is enabled
+ */
+function updateDemoToggleLabel(button, enabled) {
+  if (!button) return;
 }
 
+/**
+ * Extracts coordinates from various possible object property formats.
+ * Handles multiple naming conventions (lat/latitude, lon/longitude, x/y).
+ *
+ * @param {Object} item - The object containing coordinate data
+ * @returns {Object|null} Object with lat and lon properties, or null if not found
+ */
 function normalizeCoords(item) {
   const lat = Number(
     item.lat ?? item.latitude ?? item.y ?? item.coordonnees?.lat,
@@ -170,14 +155,23 @@ function normalizeCoords(item) {
   return null;
 }
 
+/**
+ * Removes all NASA fire markers from the demo map.
+ */
 function clearDemoNasaFires() {
   if (homeNasaFiresLayer) {
     homeNasaFiresLayer.clearLayers();
   }
 }
 
+/**
+ * Adds NASA FIRMS fire markers to the home map.
+ * Attempts to fetch real fire data from the API; falls back to simulated fires.
+ *
+ * @async
+ * @param {Object} center - Center point with lat and lon properties
+ */
 async function addDemoNasaFiresToMap(center) {
-  if (!homeMap || typeof L === 'undefined') return;
   if (!homeNasaFiresLayer) {
     homeNasaFiresLayer = L.layerGroup().addTo(homeMap);
   }
@@ -254,8 +248,13 @@ async function addDemoNasaFiresToMap(center) {
     .bindPopup(popup);
 }
 
+/**
+ * Determines visual properties (emoji and CSS class) for an alert based on risk type.
+ *
+ * @param {string} type - The risk type
+ * @returns {Object} Object with emoji and className properties
+ */
 function riskPingVisual(type) {
-  const key = normalizeRiskKey(type);
   if (key.includes('inond')) return { emoji: '🌊', className: 'ping-flood' };
   if (key.includes('incend') || key.includes('feu'))
     return { emoji: '🔥', className: 'ping-fire' };
@@ -270,8 +269,13 @@ function riskPingVisual(type) {
   return { emoji: '⚠️', className: 'ping-default' };
 }
 
+/**
+ * Renders alert markers on the home map with pulsing visual effects.
+ * Creates circular markers with emojis positioned around alert locations.
+ *
+ * @param {Array<Object>} alerts - Array of alert objects with location data
+ */
 function renderAlertPingsOnMap(alerts) {
-  if (!homeMap || typeof L === 'undefined') return;
   if (!homeAlertMarkersLayer) {
     homeAlertMarkersLayer = L.layerGroup().addTo(homeMap);
   }
@@ -318,8 +322,14 @@ function renderAlertPingsOnMap(alerts) {
   });
 }
 
+/**
+ * Initializes and renders the home risk map.
+ * Sets up Leaflet map with OSM tiles, markers, and flood zone overlays.
+ * Loads risk data from the API and displays industrial sites.
+ *
+ * @async
+ */
 async function loadHomeMap() {
-  const mapEl = qs('home-map');
   if (!mapEl || typeof L === 'undefined') return;
 
   const status = qs('map-status');
@@ -424,8 +434,14 @@ async function loadHomeMap() {
   }
 }
 
+/**
+ * Main initialization function for the home page.
+ * Sets up maps, alerts, demo mode toggle, and event listeners.
+ * Fetches and displays current weather and risk alerts.
+ *
+ * @async
+ */
 async function loadHome() {
-  const root = qs('home-content');
   if (!root) return;
   const mapSection = qs('home-map-section');
 
@@ -516,12 +532,13 @@ async function loadHome() {
     }
   };
 
+  await refreshHomeAlerts();
+
   if (demoToggle) {
     demoToggle.addEventListener('click', async () => {
       demoMode = !demoMode;
       setDemoModeEnabled(demoMode);
       updateDemoToggleLabel(demoToggle, demoMode);
-      // Mettre à jour la couche de feux NASA en même temps que le mode démo
       if (homeMap) {
         const center = homeMap.getCenter();
         if (demoMode) {
@@ -534,9 +551,6 @@ async function loadHome() {
     });
   }
 
-  await refreshHomeAlerts();
-
-  // Fetch and display weather below the map
   const weatherSection = qs('weather-home-section');
   const weatherContainer = qs('weather-home-container');
   if (weatherSection && weatherContainer) {
@@ -1036,25 +1050,21 @@ async function loadPreparationPage() {
       coolingPlacesSection.classList.toggle('hidden', !isCanicule);
     }
 
-    // Checklists avec icônes adaptées à chaque ligne
+    // Checklists - emojis are in the text itself
     before.innerHTML = (risk.checklist_avant || [])
       .map((x) => {
-        const icon = checklistIconForLine(x);
         return `
-					<li class="flex items-start gap-2 text-white/90">
-						<span class="mt-0.5">${icon}</span>
-						<span>${x}</span>
+					<li class="text-white/90">
+						${x}
 					</li>
 				`;
       })
       .join('');
     during.innerHTML = (risk.checklist_pendant || [])
       .map((x) => {
-        const icon = checklistIconForLine(x);
         return `
-					<li class="flex items-start gap-2 text-white/90">
-						<span class="mt-0.5">${icon}</span>
-						<span>${x}</span>
+					<li class="text-white/90">
+						${x}
 					</li>
 				`;
       })

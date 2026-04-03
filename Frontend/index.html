@@ -1,5 +1,10 @@
 <!doctype html>
 <html lang="fr">
+  <!-- 
+    BDX-Hackathon Home Page
+    Main entry point for the risk prevention application
+    Displays alerts, risk map, and weather information for Bordeaux region
+  -->
   <head>
     <title>Accueil</title>
     <meta charset="UTF-8" />
@@ -20,18 +25,19 @@
   </head>
 
   <body>
+    <!-- Header navigation bar -->
     <header>
       <div
         class="header fixed top-0 left-0 w-full h-20 bg-veille-4 z-50 flex items-center justify-center gap-x-3"
       >
-        <!-- Logo -->
+        <!-- Logo - clickable to toggle demo mode -->
         <div
           id="home-demo-toggle"
           class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
         >
           <img src="images/logo.png" alt="Logo" class="logo-img h-12" />
         </div>
-        <!-- Phario -->
+        <!-- Application name / branding -->
         <div
           class="bg-veille-3 rounded-xl px-4 py-2 flex items-center justify-center"
         >
@@ -39,8 +45,11 @@
         </div>
       </div>
     </header>
+
+    <!-- Main content area -->
     <main class="min-h-screen pt-20 pb-20 bg-veille-4">
       <div class="container mx-auto px-4" id="home-content">
+        <!-- Address search section -->
         <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
           <h2 class="text-white font-semibold">
             Connaître les risques près de chez moi
@@ -67,12 +76,16 @@
             </button>
           </form>
         </section>
+
+        <!-- Current alerts display section -->
         <section id="alerts-home-section" class="mt-4 hidden">
           <div
             id="alerts-home-container"
             class="grid gap-3 max-w-md mx-auto"
           ></div>
         </section>
+
+        <!-- Interactive risk map section -->
         <section
           id="home-map-section"
           class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4 hidden"
@@ -87,6 +100,8 @@
             style="height: 300px"
           ></div>
         </section>
+
+        <!-- Weather information section -->
         <section
           id="weather-home-section"
           class="rounded-2xl bg-veille-3 p-4 border border-white/10 mt-4"
@@ -98,8 +113,10 @@
         </section>
       </div>
     </main>
+
+    <!-- Footer navigation bar -->
     <footer class="fixed bottom-0 left-0 w-full h-20 bg-veille-4 z-50">
-      <!-- Navbar -->
+      <!-- Bottom navigation menu -->
       <div class="flex justify-center items-center h-full">
         <div class="navbar-font">
           <ul

@@ -1,3 +1,14 @@
+"""
+NASA FIRMS (Fire Information and Management System) API client module.
+
+This module provides integration with NASA FIRMS API for detecting active fires
+using MODIS and VIIRS satellite data. The data helps identify wildfire and
+uncontrolled fire incidents near user locations for real-time risk assessment.
+
+NASA FIRMS provides near real-time fire detection data with 375m resolution
+(MODIS) or 375m resolution (VIIRS), updated multiple times daily.
+"""
+
 import csv
 from io import StringIO
 from typing import Any, Dict, List, Optional
@@ -6,47 +17,71 @@ import requests
 
 
 class NasaFirmsService:
-    """Client léger pour l'API NASA FIRMS (données feux actifs MODIS/VIIRS).
+    """
+    Client for the NASA FIRMS API to retrieve active fire detections.
 
-    Cette implémentation utilise l'endpoint "area" qui permet de récupérer les
-    feux actifs dans une bounding box (lat/lon min/max) sur une fenêtre
-    temporelle (ex: dernières 24h).
+    Uses the FIRMS area API endpoint to fetch fire detections within
+    a bounding box over a specified time period. Supports both MODIS and VIIRS
+    satellite data products.
 
-    L'URL exacte et les produits disponibles peuvent évoluer, donc cette classe
-    est volontairement simple et facile à adapter si besoin.
+    Attributes:
+        api_key (str): API key for NASA FIRMS service
+        BASE_URL (str): Base URL for the FIRMS API
     """
 
-    # Selon la doc NASA FIRMS, le schéma standard est :
-    #   /api/area/csv/{api_key}/{product}/{minLon},{minLat},{maxLon},{maxLat}/{day_range}
-    # On garde BASE_URL jusqu'à /csv et on complète le chemin avec la clé + le reste.
+    # NASA FIRMS area API endpoint format:
+    # /api/area/csv/{api_key}/{product}/{minLon},{minLat},{maxLon},{maxLat}/{day_range}
     BASE_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv"
 
     def __init__(self, api_key: Optional[str]):
+        """
+        Initialize the NASA FIRMS service client.
+
+        Args:
+            api_key: API key for authentication (get from https://firms.modaps.eosdis.nasa.gov/api/)
+        """
         self.api_key = api_key
 
     def get_active_fires_bbox(
         self,
-    min_lat: float,
-    min_lon: float,
-    max_lat: float,
-    max_lon: float,
-    product: str = "MODIS_NRT",
-    day_range: int = 1,
+        min_lat: float,
+        min_lon: float,
+        max_lat: float,
+        max_lon: float,
+        product: str = "MODIS_NRT",
+        day_range: int = 1,
     ) -> List[Dict[str, Any]]:
-        """Retourne les feux actifs MODIS/VIIRS dans une bbox donnée.
+        """
+        Retrieve active fire detections within a geographic bounding box.
+
+        Queries the NASA FIRMS API for fire hotspots detected by satellite
+        within the specified area and time window.
 
         Args:
-            min_lat, min_lon, max_lat, max_lon: bounding box
-            product: ex. "MODIS_NRT", "VIIRS_SNPP_NRT"...
-            day_range: fenêtre temporelle en jours (entre 1 et 5)
+            min_lat: Minimum latitude of bounding box
+            min_lon: Minimum longitude of bounding box
+            max_lat: Maximum latitude of bounding box
+            max_lon: Maximum longitude of bounding box
+            product: Satellite product - 'MODIS_NRT' or 'VIIRS_SNPP_NRT' (default: 'MODIS_NRT')
+            day_range: Time window in days, 1-5 (default: 1 for last 24 hours)
+
+        Returns:
+            List[Dict]: List of fire detection objects with properties:
+                - latitude, longitude: Fire location coordinates
+                - brightness: Thermal radiation/brightness
+                - confidence: Detection confidence level
+                - acq_date, acq_time: Detection timestamp
+                - frp: Fire Radiative Power
+
+        Raises:
+            ValueError: If API key is not configured
         """
         if not self.api_key:
             raise ValueError("NASA_FIRMS_API_KEY is not configured")
 
-        # Schéma NASA FIRMS (area API) :
-        #   .../area/csv/{api_key}/{product}/{minLon},{minLat},{maxLon},{maxLat}/{DAY_RANGE}
+        # Build request URL with bounding box coordinates
         bbox_str = f"{min_lon},{min_lat},{max_lon},{max_lat}"
-        # Clamp du nombre de jours entre 1 et 5 comme indiqué dans la doc
+        # Clamp day_range between 1 and 5 as per NASA FIRMS specification
         if day_range < 1:
             day_range = 1
         if day_range > 5:
@@ -57,7 +92,7 @@ class NasaFirmsService:
         resp = requests.get(url, timeout=20)
         resp.raise_for_status()
 
-        # La réponse est un CSV ; on l'analyse en dictionnaires.
+        # Parse CSV response into list of dictionaries
         text = resp.text
         reader = csv.DictReader(StringIO(text))
         fires: List[Dict[str, Any]] = []
@@ -72,12 +107,12 @@ class NasaFirmsService:
                         "acq_date": row.get("acq_date"),
                         "acq_time": row.get("acq_time"),
                         "frp": float(row.get("frp")) if row.get("frp") else None,
-                        # On garde aussi la ligne brute pour debug/évolution.
+                        # Keep raw row for debugging and future enhancements
                         "_raw": row,
                     }
                 )
             except Exception:
-                # Si une ligne est malformée, on la saute.
+                # Skip malformed rows without failing entire request
                 continue
 
         return fires

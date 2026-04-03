@@ -1,15 +1,20 @@
+/**
+ * Root CSS Variables and Base Styles
+ * Defines the color scheme for the BDX application
+ */
 :root {
+  /* Primary color: Cyan Blue (Accent elements) */
   --veille-1: #00aeef;
-  /* Bleu Cyan (Accent) */
+  /* Secondary color: Amber Orange (Buttons, Alerts) */
   --veille-2: #f9a11b;
-  /* Orange Ambré (Boutons / Alerte) */
+  /* Tertiary color: Royal Blue (Cards, Backgrounds) */
   --veille-3: #004b7a;
-  /* Bleu Royal (Cartes / Cards) */
+  /* Quaternary color: Night Blue (Main background) */
   --veille-4: #001d3d;
-  /* Bleu Nuit (Fond / Background) */
   background-color: var(--veille-4);
 }
 
+/* Font imports and typography utility classes */
 @import url('https://fonts.googleapis.com/css2?family=Anton&display=swap');
 
 /* ---------------- Fonts ---------------- */
@@ -23,6 +28,7 @@
 }
 
 /* ---------------- Veille 1 (anciennement Blue) ---------------- */
+/* Custom color utility classes for veille-1 (Cyan Blue) */
 .text-veille-1 {
   color: var(--veille-1) !important;
 }
@@ -44,6 +50,7 @@
 }
 
 /* ---------------- Veille 2 (anciennement Orange) ---------------- */
+/* Custom color utility classes for veille-2 (Amber Orange) */
 .text-veille-2 {
   color: var(--veille-2) !important;
 }
@@ -65,6 +72,7 @@
 }
 
 /* ---------------- Veille 3 (anciennement Dark) ---------------- */
+/* Custom color utility classes for veille-3 (Royal Blue) */
 .text-veille-3 {
   color: var(--veille-3) !important;
 }
@@ -86,6 +94,7 @@
 }
 
 /* ---------------- Veille 4 (anciennement Accent) ---------------- */
+/* Custom color utility classes for veille-4 (Night Blue) */
 .text-veille-4 {
   color: var(--veille-4) !important;
 }
@@ -109,6 +118,7 @@
 /* ---------------- Helpers ---------------- */
 /* Small helper to increase selector specificity without !important:
    use `.title.font-anton` in HTML when necessary */
+/* Utility helpers and layout adjustments */
 .title.font-anton {
   font-family: 'Anton', 'Futura', sans-serif;
 }
@@ -119,6 +129,7 @@
 }
 
 /* Alert pings on home map */
+/* Risk alert pings: animated circular markers on map */
 .risk-ping {
   width: 36px;
   height: 36px;
