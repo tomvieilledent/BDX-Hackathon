@@ -21,7 +21,10 @@
         class="header fixed top-0 left-0 w-full h-20 bg-veille-4 z-50 flex items-center justify-center gap-x-3"
       >
         <!-- Logo -->
-        <div class="flex items-center justify-center">
+        <div
+          id="home-demo-toggle"
+          class="flex items-center justify-center cursor-pointer hover:opacity-80 transition-opacity"
+        >
           <img src="images/logo.png" alt="Logo" class="logo-img h-12" />
         </div>
         <!-- Phario -->
@@ -32,7 +35,7 @@
         </div>
       </div>
     </header>
-    <main class="min-h-screen pt-20 pb-24 bg-veille-4">
+    <main class="min-h-screen pt-20 pb-20 bg-veille-4">
       <div class="container mx-auto px-4">
         <section class="rounded-2xl bg-veille-3 p-4 border border-white/10">
           <h1 class="text-white text-xl font-anton">Preparation</h1>
@@ -75,12 +78,10 @@
         </section>
       </div>
     </main>
-    <footer>
+    <footer class="fixed bottom-0 left-0 w-full h-20 bg-veille-4 z-50">
       <!-- Navbar -->
-      <div
-        class="fixed bottom-0 left-0 w-full flex justify-center items-center h-20"
-      >
-        <div class="navbar-font bg bg-veille-4 mb-2 mx-4">
+      <div class="flex justify-center items-center h-full">
+        <div class="navbar-font">
           <ul
             class="navbar bg-veille-3 flex items-center justify-center rounded-2xl"
           >
