@@ -1,0 +1,14 @@
+[
+  {
+    "id": "seed-1",
+    "category": "flood",
+    "description": "Rue inondée après fortes pluies, circulation difficile.",
+    "location": {
+      "lat": 44.8377,
+      "lng": -0.5792,
+      "name": "Bordeaux Centre"
+    },
+    "reporter": "Citoyen anonyme",
+    "timestamp": "2026-04-22T09:30:00.000Z"
+  }
+]
